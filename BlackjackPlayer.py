@@ -2,24 +2,20 @@ import cv2
 from math import cos,sin,pi,acos
 import numpy as np
 import sys
+from BlackjackImage import *
 
 class BlackjackPlayer:
 
-	def __init__(self, doRun=True):
+	def __init__(self, doRun=True, ignoreWebcam=False):
 		# init camera if exists
-		self.webcam = cv2.VideoCapture(0)
-		self.hasWebcam, frame = self.webcam.read()
+		if ignoreWebcam:
+			self.hasWebcam = False
+		else:
+			self.webcam = cv2.VideoCapture(0)
+			self.hasWebcam, frame = self.webcam.read()
 
 		_bigBoxScale = 0.2
 		self.bigBox = (int(250*_bigBoxScale),int(350*_bigBoxScale))
-
-		# vector functions
-		self.dist = lambda a,b:(a[0]-b[0])**2+(a[1]-b[1])**2
-		self.dot = lambda a,b:a[0]*b[0]+a[1]*b[1]
-		self.vec = lambda a,b:[b[0]-a[0],b[1]-a[1]]
-		self.norm = lambda a,b:[a[1]-b[1],b[0]-a[0]]
-		self.angle = lambda a,b,z:acos(dot(vec(a,b),vec(b,z))/(dist(a,b)*dist(b,z)))
-		self.ccw = lambda a,b,z:dot(norm(a,b),vec(b,z))#>0
 
 		if doRun:
 			self.run()
@@ -29,10 +25,11 @@ class BlackjackPlayer:
 	"""
 	def showImage(self, image, name="cards", width=1000):
 		# scale image
-		w,h = len(image[0]),len(image)
-		scale = float(width)/w
-		image = cv2.resize(image, (int(w*scale),int(h*scale)))
-		cv2.imshow(name, image)
+		#w,h = len(image[0]),len(image)
+		#scale = float(width)/w
+		#image = cv2.resize(image, (int(w*scale),int(h*scale)))
+		#cv2.imshow(name, image)
+		image.show(name=name, width=width)
 		# with webcam, wait one frame
 		if self.hasWebcam:
 			if cv2.waitKey(1) & 0xFF == 27:
@@ -66,7 +63,7 @@ class BlackjackPlayer:
 
 	"""
 	Compute the perspective matrix M to transform a box into a
-	2.5x3.5 rectangle
+	2.5x3.5 ignoreWebcam=Truee
 	"""
 	def computePerspective(box):
 		# ensure box points are in circular order
@@ -101,19 +98,19 @@ class BlackjackPlayer:
 		P = np.linalg.solve(A,B)
 		return np.reshape(np.append(P,1),(3,3))
 
+
+
 	def analyzeImageForCards(self, image):
+		#self.showImage(image)
+		image.extractCardCandidates()
 		self.showImage(image)
 
 	def run(self):
 		# without webcam, run computations on specific images
 		if not self.hasWebcam:
-			im1 = cv2.imread("cards-640.jpg")
-			#analyzeImageForCards1(im1)
-			analyzeImageForCards2(im1)
-			for i in range(1,20):
-				im = cv2.imread("frames/"+str(i)+".jpg")
-				#analyzeImageForCards1(im)
-				analyzeImageForCards2(im)
+			for i in range(1,8):
+				im = BlackjackImage(cv2.imread("images/"+str(i)+".jpg"))
+				self.analyzeImageForCards(im)
 
 		# with webcam, run computations on webcam images
 		if self.hasWebcam:
@@ -128,4 +125,4 @@ class BlackjackPlayer:
 				#analyzeImageForCards2(frame2)
 				self.analyzeImageForCards(frame2)
 
-BlackjackPlayer()
+b = BlackjackPlayer(ignoreWebcam=True)
