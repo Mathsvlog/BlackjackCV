@@ -16,8 +16,8 @@ class BlackjackPlayer:
 
 		_bigBoxScale = 0.2
 		self.bigBox = (int(250*_bigBoxScale),int(350*_bigBoxScale))
-		pipAmount = (0.17, 0.25)
-		self.pipBox = tuple(map(lambda i:self.bigBox[i]*pipAmount[i],(0,1)))
+		pipAmount = (0.15, 0.25)
+		self.pipBox = tuple(map(lambda i:int(round(self.bigBox[i]*pipAmount[i])),(0,1)))
 
 		if doRun:
 			self.run()
@@ -108,25 +108,51 @@ class BlackjackPlayer:
 
 	def analyzeImageForCards(self, image):
 		#self.showImage(image)
-		cards = image.extractCardCandidates()
-		self.displayCards(image, cards)
+		candidates = image.extractCardCandidates()
+		cards = self.getTransformedCardCandidates(image, candidates)
+		cards = self.filterCards(cards)
+		self.displayCards(cards)
+
+	def filterCards(self, cards):
+		bx,by = self.bigBox
+		for idx,card in reversed(list(enumerate(cards))):
+			#print np.shape(card), self.bigBox, np.average(card, axis=(1))
+			pass
+		return cards
+
+	def getTransformedCardCandidates(self, image, candidates):
+		cards = []
+		for cand in candidates:
+			M = self.computePerspective(cand)
+			imageCard = cv2.warpPerspective(image.getInputImage(), M, self.bigBox)
+			cards.append(imageCard)
+		return cards
 
 	"""
 	Extract cards and display them in the output window
 	"""
-	def displayCards(self, image, cards):
+	def displayCards(self, cards):
 		n = len(cards)
 		c = 6# columns in output
+		r = 5# minimum number of rows in output
+		b = 20# blur amount
 		bx,by = self.bigBox
 		px,py = self.pipBox
-		cardDisplay = np.zeros(((by+py)*((n+c-1)/c),bx*c,3) if n>0 else (by,bx*c,3), np.uint8)
-		for idx, card in enumerate(cards):
-			M = self.computePerspective(card)
-			imageCard = cv2.warpPerspective(image.getInputImage(), M, self.bigBox)
+		cardDisplay = np.zeros(((by+py)*max([((n+c-1)/c),r]),bx*c,3) if n>0 else ((by+py)*r,bx*c,3), np.uint8)
+		for idx, imageCard in enumerate(cards):
+			# draw the card in the output
 			x,y = bx*(idx%c), (by+py)*(idx/c)
-			cardDisplay[y:y+by,x:x+bx] = imageCard[:,:]
-			y = int(y+by)
-			cardDisplay[y:y+py,x:x+px] = imageCard[:py,:px]
+			cardDisplay[y:y+by,x:x+bx] = imageCard
+			y += by
+			# draw the two corner pips in the output
+			for imagePip in [imageCard[:py,:px], imageCard[:-py-1:-1,:-px-1:-1]]:
+				cardDisplay[y:y+py,x:x+px] = imagePip
+				#blur = np.average(imagePip, axis=(1)).astype(np.uint8)
+				blur = cv2.blur(imagePip, (py,px))
+				imagePip = cv2.addWeighted(imagePip, 1+b, blur, -b, 0)
+				cardDisplay[y:y+py,x+px:x+px*2] = imagePip
+				x += px*2
+
 		self.showImage(cardDisplay, "BlackjackCV - Out", 75*c, True)
 
 
