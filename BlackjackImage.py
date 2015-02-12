@@ -17,10 +17,13 @@ class BlackjackImage:
 		# 1D numpy array to tuple
 		self.toPoints = lambda points:map(lambda p:tuple(p[0]), points)
 
+	def getInputImage(self):
+		return self.image
+
 	def getOutputImage(self):
 		return self.imageOut
 
-	def show(self, name="cards", width=900):
+	def show(self, name="BlackjackCV", width=900):
 		im = self.imageOut if self.drawOut else self.image
 		w,h = len(im[0]),len(im)
 		scale = float(width)/w

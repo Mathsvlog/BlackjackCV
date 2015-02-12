@@ -3,6 +3,7 @@ from math import cos,sin,pi,acos
 import numpy as np
 import sys
 from BlackjackImage import *
+import PointFunctions as pt
 
 class BlackjackPlayer:
 
@@ -16,6 +17,8 @@ class BlackjackPlayer:
 
 		_bigBoxScale = 0.2
 		self.bigBox = (int(250*_bigBoxScale),int(350*_bigBoxScale))
+		pipAmount = (0.17, 0.25)
+		self.pipBox = tuple(map(lambda i:self.bigBox[i]*pipAmount[i],(0,1)))
 
 		if doRun:
 			self.run()
@@ -23,22 +26,24 @@ class BlackjackPlayer:
 	"""
 	Show image in window. Pressing escape will close program.
 	"""
-	def showImage(self, image, name="cards", width=1000):
-		# scale image
-		#w,h = len(image[0]),len(image)
-		#scale = float(width)/w
-		#image = cv2.resize(image, (int(w*scale),int(h*scale)))
-		#cv2.imshow(name, image)
-		image.show(name=name, width=width)
-		# with webcam, wait one frame
-		if self.hasWebcam:
-			if cv2.waitKey(1) & 0xFF == 27:
-				self.webcam.release()
-				cv2.destroyAllWindows()
+	def showImage(self, image, name="BlackjackCV", width=1000, skipWaitKey=False):
+		if (isinstance(image, BlackjackImage)):
+			image.show(name=name, width=width)
+		else:
+			w,h = len(image[0]),len(image)
+			scale = float(width)/w
+			image = cv2.resize(image, (int(w*scale),int(h*scale)))
+			cv2.imshow(name, image)
+		if not skipWaitKey:
+			# with webcam, wait one frame
+			if self.hasWebcam:
+				if cv2.waitKey(1) & 0xFF == 27:
+					self.webcam.release()
+					cv2.destroyAllWindows()
+					sys.exit()
+			# without webcam, show image until keypress
+			elif cv2.waitKey(0) & 0xFF == 27:
 				sys.exit()
-		# without webcam, show image until keypress
-		elif cv2.waitKey(0) & 0xFF == 27:
-			sys.exit()
 
 	"""
 	rect = ((centerX,centerY),(width,height),(angle))
@@ -65,15 +70,17 @@ class BlackjackPlayer:
 	Compute the perspective matrix M to transform a box into a
 	2.5x3.5 ignoreWebcam=Truee
 	"""
-	def computePerspective(box):
+	def computePerspective(self, box):
+		if isinstance(box[0],tuple):
+			box = map(lambda b:list(b),box)
 		# ensure box points are in circular order
-		if dist(box[0],box[1])>dist(box[2],box[1]):
+		if pt.dist(box[0],box[1])>pt.dist(box[2],box[1]):
 			for t1,t2 in [(0,1),(2,3),(1,3)]:
 				for i in range(2):
 					box[t1][i],box[t2][i] = box[t2][i],box[t1][i]
 		# order final points depending if points are ccw 
 		X = [self.bigBox[0],0,0,self.bigBox[0]]
-		if (ccw(box[0],box[1],box[2])>0):
+		if (pt.ccw(box[0],box[1],box[2])):
 			X = [0,self.bigBox[0],self.bigBox[0],0]
 		Y = [0,0,self.bigBox[1],self.bigBox[1]]
 		# construct B from AX = B
@@ -102,27 +109,52 @@ class BlackjackPlayer:
 
 	def analyzeImageForCards(self, image):
 		#self.showImage(image)
-		image.extractCardCandidates()
-		self.showImage(image)
+		cards = image.extractCardCandidates()
+		self.displayCards(image, cards)
+
+	"""
+	Extract cards and display them in the output window
+	"""
+	def displayCards(self, image, cards):
+		n = len(cards)
+		c = 4# columns in output
+		bx,by = self.bigBox
+		px,py = self.pipBox
+		cardDisplay = np.zeros(((by+py)*((n+c-1)/c),bx*c,3) if n>0 else (by,bx*c,3), np.uint8)
+		for idx, card in enumerate(cards):
+			M = self.computePerspective(card)
+			imageCard = cv2.warpPerspective(image.getInputImage(), M, self.bigBox)
+			x,y = bx*(idx%c), (by+py)*(idx/c)
+			cardDisplay[y:y+by,x:x+bx] = imageCard[:,:]
+			y = int(y+by)
+			cardDisplay[y:y+py,x:x+px] = imageCard[:py,:px]
+		self.showImage(cardDisplay, "BlackjackCV - Out", 100*c, True)
+
 
 	def run(self):
+		blurPixels=10
+		blurPixels=(blurPixels,blurPixels)
+		amount = 0
 		# without webcam, run computations on specific images
 		if not self.hasWebcam:
-			for i in range(1,8):
-				im = BlackjackImage(cv2.imread("images/"+str(i)+".jpg"))
-				self.analyzeImageForCards(im)
+			for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,8)):
+				im = cv2.imread(filename)
+				blur = cv2.blur(im, blurPixels)
+				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
+				image = BlackjackImage(frame2)
+				self.analyzeImageForCards(image)
+				self.showImage(image)
 
 		# with webcam, run computations on webcam images
 		if self.hasWebcam:
-			blurPixels=10
-			blurPixels=(blurPixels,blurPixels)
-			amount = 0.5
 			while True:
 				_, frame =self.webcam.read()
 				blur = cv2.blur(frame, blurPixels)
 				#frame2 = cv2.addWeighted(frame, 1.5, blur, -0.5, 0)
 				frame2 = cv2.addWeighted(frame, 1+amount, blur, -amount, 0)
 				#analyzeImageForCards2(frame2)
-				self.analyzeImageForCards(frame2)
+				image = BlackjackImage(frame2)
+				self.analyzeImageForCards(image)
+				self.showImage(image)
 
 b = BlackjackPlayer(ignoreWebcam=True)
