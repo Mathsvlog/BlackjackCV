@@ -1,7 +1,8 @@
 import cv2,os,sys
 from math import cos,sin,pi,acos
 import numpy as np
-from BlackjackImage import *
+from BlackjackImage import BlackjackImage
+from BlackjackCard import BlackjackCard
 import PointFunctions as pt
 
 class BlackjackPlayer:
@@ -107,7 +108,6 @@ class BlackjackPlayer:
 
 
 	def analyzeImageForCards(self, image):
-		#self.showImage(image)
 		candidates = image.extractCardCandidates()
 		cards = self.getTransformedCardCandidates(image, candidates)
 		cards = self.filterCards(cards)
@@ -117,6 +117,7 @@ class BlackjackPlayer:
 		bx,by = self.bigBox
 		for idx,card in reversed(list(enumerate(cards))):
 			#print np.shape(card), self.bigBox, np.average(card, axis=(1))
+			print card.getEdgeWhiteness()
 			pass
 		return cards
 
@@ -125,7 +126,7 @@ class BlackjackPlayer:
 		for cand in candidates:
 			M = self.computePerspective(cand)
 			imageCard = cv2.warpPerspective(image.getInputImage(), M, self.bigBox)
-			cards.append(imageCard)
+			cards.append(BlackjackCard(imageCard))			
 		return cards
 
 	"""
@@ -135,24 +136,14 @@ class BlackjackPlayer:
 		n = len(cards)
 		c = 6# columns in output
 		r = 5# minimum number of rows in output
-		b = 20# blur amount
 		bx,by = self.bigBox
 		px,py = self.pipBox
-		cardDisplay = np.zeros(((by+py)*max([((n+c-1)/c),r]),bx*c,3) if n>0 else ((by+py)*r,bx*c,3), np.uint8)
+		# build display image
+		cardDisplay = np.zeros(((by+py)*max([((n+c-1)/c),r]),bx*c,3), np.uint8)
+		# put each card on the display
 		for idx, imageCard in enumerate(cards):
-			# draw the card in the output
-			x,y = bx*(idx%c), (by+py)*(idx/c)
-			cardDisplay[y:y+by,x:x+bx] = imageCard
-			y += by
-			# draw the two corner pips in the output
-			for imagePip in [imageCard[:py,:px], imageCard[:-py-1:-1,:-px-1:-1]]:
-				cardDisplay[y:y+py,x:x+px] = imagePip
-				#blur = np.average(imagePip, axis=(1)).astype(np.uint8)
-				blur = cv2.blur(imagePip, (py,px))
-				imagePip = cv2.addWeighted(imagePip, 1+b, blur, -b, 0)
-				cardDisplay[y:y+py,x+px:x+px*2] = imagePip
-				x += px*2
-
+			imageCard.displayCard(cardDisplay, idx%c, idx/c)
+		# display the cards
 		self.showImage(cardDisplay, "BlackjackCV - Out", 75*c, True)
 
 
