@@ -1,7 +1,6 @@
-import cv2
+import cv2,os,sys
 from math import cos,sin,pi,acos
 import numpy as np
-import sys
 from BlackjackImage import *
 import PointFunctions as pt
 
@@ -26,7 +25,7 @@ class BlackjackPlayer:
 	"""
 	Show image in window. Pressing escape will close program.
 	"""
-	def showImage(self, image, name="BlackjackCV", width=1000, skipWaitKey=False):
+	def showImage(self, image, name="BlackjackCV", width=900, skipWaitKey=False):
 		if (isinstance(image, BlackjackImage)):
 			image.show(name=name, width=width)
 		else:
@@ -117,7 +116,7 @@ class BlackjackPlayer:
 	"""
 	def displayCards(self, image, cards):
 		n = len(cards)
-		c = 4# columns in output
+		c = 6# columns in output
 		bx,by = self.bigBox
 		px,py = self.pipBox
 		cardDisplay = np.zeros(((by+py)*((n+c-1)/c),bx*c,3) if n>0 else (by,bx*c,3), np.uint8)
@@ -128,7 +127,7 @@ class BlackjackPlayer:
 			cardDisplay[y:y+by,x:x+bx] = imageCard[:,:]
 			y = int(y+by)
 			cardDisplay[y:y+py,x:x+px] = imageCard[:py,:px]
-		self.showImage(cardDisplay, "BlackjackCV - Out", 100*c, True)
+		self.showImage(cardDisplay, "BlackjackCV - Out", 75*c, True)
 
 
 	def run(self):
@@ -137,7 +136,7 @@ class BlackjackPlayer:
 		amount = 0
 		# without webcam, run computations on specific images
 		if not self.hasWebcam:
-			for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,8)):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
@@ -156,5 +155,21 @@ class BlackjackPlayer:
 				image = BlackjackImage(frame2)
 				self.analyzeImageForCards(image)
 				self.showImage(image)
+
+	def runCapture(self):
+		idx = 1
+		while os.path.isfile("images/"+str(idx)+".jpg"):
+			idx = idx+1
+		def saveImageIfClick(event,x,y,flags,param):
+			if event==1:
+				print param
+				cv2.imwrite("images/"+str(param)+".jpg", frame)
+				idx = param+1
+		while True:
+			_, frame =self.webcam.read()
+			self.showImage(frame, width=640)
+			cv2.setMouseCallback("BlackjackCV", saveImageIfClick, idx)
+			while os.path.isfile("images/"+str(idx)+".jpg"):
+				idx = idx+1
 
 b = BlackjackPlayer(ignoreWebcam=True)
