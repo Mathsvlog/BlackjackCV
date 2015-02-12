@@ -4,6 +4,7 @@ import numpy as np
 from BlackjackImage import BlackjackImage
 from BlackjackCard import BlackjackCard
 import PointFunctions as pt
+from BlackjackGlobals import *
 
 class BlackjackPlayer:
 
@@ -14,12 +15,7 @@ class BlackjackPlayer:
 		else:
 			self.webcam = cv2.VideoCapture(0)
 			self.hasWebcam, frame = self.webcam.read()
-
-		_bigBoxScale = 0.2
-		self.bigBox = (int(250*_bigBoxScale),int(350*_bigBoxScale))
-		pipAmount = (0.15, 0.25)
-		self.pipBox = tuple(map(lambda i:int(round(self.bigBox[i]*pipAmount[i])),(0,1)))
-
+			
 		if doRun:
 			self.run()
 
@@ -79,10 +75,10 @@ class BlackjackPlayer:
 				for i in range(2):
 					box[t1][i],box[t2][i] = box[t2][i],box[t1][i]
 		# order final points depending if points are ccw 
-		X = [self.bigBox[0],0,0,self.bigBox[0]]
+		X = [cardX,0,0,cardX]
 		if (pt.ccw(box[0],box[1],box[2])):
-			X = [0,self.bigBox[0],self.bigBox[0],0]
-		Y = [0,0,self.bigBox[1],self.bigBox[1]]
+			X = [0,cardX,cardX,0]
+		Y = [0,0,cardY,cardY]
 		# construct B from AX = B
 		B = []
 		for i in range(4):
@@ -114,7 +110,6 @@ class BlackjackPlayer:
 		self.displayCards(cards)
 
 	def filterCards(self, cards):
-		bx,by = self.bigBox
 		for idx,card in reversed(list(enumerate(cards))):
 			#print np.shape(card), self.bigBox, np.average(card, axis=(1))
 			print card.getEdgeWhiteness()
@@ -125,7 +120,7 @@ class BlackjackPlayer:
 		cards = []
 		for cand in candidates:
 			M = self.computePerspective(cand)
-			imageCard = cv2.warpPerspective(image.getInputImage(), M, self.bigBox)
+			imageCard = cv2.warpPerspective(image.getInputImage(), M, cardSize)
 			cards.append(BlackjackCard(imageCard))			
 		return cards
 
@@ -136,10 +131,8 @@ class BlackjackPlayer:
 		n = len(cards)
 		c = 6# columns in output
 		r = 5# minimum number of rows in output
-		bx,by = self.bigBox
-		px,py = self.pipBox
 		# build display image
-		cardDisplay = np.zeros(((by+py)*max([((n+c-1)/c),r]),bx*c,3), np.uint8)
+		cardDisplay = np.zeros(((cardY+pipY)*max([((n+c-1)/c),r]),cardX*c,3), np.uint8)
 		# put each card on the display
 		for idx, imageCard in enumerate(cards):
 			imageCard.displayCard(cardDisplay, idx%c, idx/c)
