@@ -112,7 +112,7 @@ class BlackjackPlayer:
 	def filterCards(self, cards):
 		for idx,card in reversed(list(enumerate(cards))):
 			#print np.shape(card), self.bigBox, np.average(card, axis=(1))
-			print card.getEdgeWhiteness()
+			#print card.getEdgeWhiteness()
 			pass
 		return cards
 
@@ -140,32 +140,6 @@ class BlackjackPlayer:
 		self.showImage(cardDisplay, "BlackjackCV - Out", 75*c, True)
 
 
-	def run(self):
-		blurPixels=10
-		blurPixels=(blurPixels,blurPixels)
-		amount = 0
-		# without webcam, run computations on specific images
-		if not self.hasWebcam:
-			for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
-				im = cv2.imread(filename)
-				blur = cv2.blur(im, blurPixels)
-				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
-				image = BlackjackImage(frame2)
-				self.analyzeImageForCards(image)
-				self.showImage(image)
-
-		# with webcam, run computations on webcam images
-		if self.hasWebcam:
-			while True:
-				_, frame =self.webcam.read()
-				blur = cv2.blur(frame, blurPixels)
-				#frame2 = cv2.addWeighted(frame, 1.5, blur, -0.5, 0)
-				frame2 = cv2.addWeighted(frame, 1+amount, blur, -amount, 0)
-				#analyzeImageForCards2(frame2)
-				image = BlackjackImage(frame2)
-				self.analyzeImageForCards(image)
-				self.showImage(image)
-
 	def runCapture(self):
 		idx = 1
 		while os.path.isfile("images/"+str(idx)+".jpg"):
@@ -181,5 +155,33 @@ class BlackjackPlayer:
 			cv2.setMouseCallback("BlackjackCV", saveImageIfClick, idx)
 			while os.path.isfile("images/"+str(idx)+".jpg"):
 				idx = idx+1
+
+	def run(self):
+		blurPixels=10
+		blurPixels=(blurPixels,blurPixels)
+		amount = 0
+		# without webcam, run computations on specific images
+		if not self.hasWebcam:
+			for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
+				im = cv2.imread(filename)
+				blur = cv2.blur(im, blurPixels)
+				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
+				image = BlackjackImage(frame2)
+				self.analyzeImageForCards(image)
+				self.showImage(image)
+				print
+
+		# with webcam, run computations on webcam images
+		if self.hasWebcam:
+			while True:
+				_, frame =self.webcam.read()
+				blur = cv2.blur(frame, blurPixels)
+				#frame2 = cv2.addWeighted(frame, 1.5, blur, -0.5, 0)
+				frame2 = cv2.addWeighted(frame, 1+amount, blur, -amount, 0)
+				#analyzeImageForCards2(frame2)
+				image = BlackjackImage(frame2)
+				self.analyzeImageForCards(image)
+				self.showImage(image)
+
 
 b = BlackjackPlayer(ignoreWebcam=True)

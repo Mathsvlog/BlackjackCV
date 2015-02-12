@@ -37,7 +37,6 @@ class BlackjackImage:
 		imValues = cv2.cornerHarris(self.imageGrey, 5, 3, 0.04)
 		ret, imCorners = cv2.threshold(imValues, 0.04*imValues.max(), 255, 0)
 		imCorners = np.uint8(imCorners)
-		#ret, labels, stats, centroids = cv2.connectedComponentsWithStats(imCorners)
 		_, _, _, centroids = cv2.connectedComponentsWithStats(imCorners)
 		return centroids
 
@@ -79,7 +78,7 @@ class BlackjackImage:
 		corners = self.extractHarisCorners()
 		cornerList = map(lambda c:tuple(c),list(corners))
 
-		condition = lambda i:len(contourApprox[i])==4 and 400<cv2.contourArea(contours[i])
+		condition = lambda i:len(contourApprox[i])==4 and 800<cv2.contourArea(contours[i])
 		cardCandidates = []
 		for idx in filter(condition, range(len(contours))):
 			contour,appr = contours[idx], contourApprox[idx]
