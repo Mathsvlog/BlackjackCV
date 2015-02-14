@@ -197,6 +197,7 @@ class BlackjackPlayer:
 				#analyzeImageForCards2(frame2)
 				image = BlackjackImage(frame2)
 				self.analyzeImageForCards(image)
+				#image = cv2.Canny(image.getInputImage(), 100, 200)
 				self.showImage(image)
 
 b = BlackjackPlayer()
