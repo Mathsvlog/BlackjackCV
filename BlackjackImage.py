@@ -35,7 +35,8 @@ class BlackjackImage:
 	Returns a list of centroids of corners using Harris corner algorithm
 	"""
 	def extractHarisCorners(self):
-		imValues = cv2.cornerHarris(self.imageGrey, 5, 3, 0.04)
+		#imValues = cv2.cornerHarris(self.imageGrey, 5, 3, 0.04)
+		imValues = cv2.cornerHarris(self.imageGrey, 8, 3, 0.04)
 		ret, imCorners = cv2.threshold(imValues, 0.04*imValues.max(), 255, 0)
 		imCorners = np.uint8(imCorners)
 		_, _, _, centroids = cv2.connectedComponentsWithStats(imCorners)
@@ -44,7 +45,7 @@ class BlackjackImage:
 		c = centroids[0]
 		if abs(c[0]-imageX/2)<3 and abs(c[1]-imageY/2)<3 and imCorners[c[1],c[0]]==0:
 			return centroids[1:]
-			
+
 		return centroids
 
 	"""

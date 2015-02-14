@@ -1,14 +1,38 @@
 import cv2
-#from math import cos,sin,pi,acos
 import numpy as np
-#import PointFunctions as pt
 from BlackjackGlobals import *
+
 
 class BlackjackCard:
 
 	def __init__(self, image):
 		self.card = image
 		self.pips = [image[:pipY,:pipX], image[:-pipY-1:-1,:-pipX-1:-1]]
+		self.pipContours = self._computePipContours()
+
+	def _computePipContours(self):
+		pipContours = []
+		for pip in self.pips:
+			pipBlur = cv2.blur(pip, pipSize)
+			pipSharpened = cv2.addWeighted(pip, 1+pipSharpen, pipBlur, -pipSharpen, 0)
+			pipCanny = cv2.Canny(pipSharpened, 100, 400)
+			_, contours, _ = cv2.findContours(pipCanny, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+			pipContour = np.copy(pipSharpened)
+			# classify contours as suit, value, and nonimportant
+			for c in contours:
+				center,_ = cv2.minEnclosingCircle(c)
+				if cv2.contourArea(c)==0 or abs(center[0]-pipX/2)/pipX>.4:
+					color = (255,255,0)
+				elif ((pipY-center[1])/pipY < 0.4):
+					color = (255,0,0)
+				else:
+					color = (0,200,0)
+				cv2.drawContours(pipContour, [c],0,color,1)
+			
+			pipContours.append(pipContour)
+			
+
+		return pipContours
 
 	"""
 	Place card and pip images onto the display in the correct grid location
@@ -17,11 +41,16 @@ class BlackjackCard:
 		x,y = cardX*i, (cardY+pipY)*j
 		display[y:y+cardY,x:x+cardX] = self.card
 		y += cardY
-		for pip in self.pips:
+		for pip,pipContour in zip(self.pips,self.pipContours):
 			display[y:y+pipY,x:x+pipX] = pip
+			display[y:y+pipY,x+pipX:x+pipX*2] = pipContour
+			"""
 			pipBlur = cv2.blur(pip, pipSize)
 			pip = cv2.addWeighted(pip, 1+pipSharpen, pipBlur, -pipSharpen, 0)
-			display[y:y+pipY,x+pipX:x+pipX*2] = pip
+			#canny = cv2.Canny(pip, 100, 400)
+			canny = cv2.cvtColor(cv2.Canny(pip, 100, 400), cv2.COLOR_GRAY2BGR)
+			display[y:y+pipY,x+pipX:x+pipX*2] = canny
+			"""
 			x += pipX*2
 
 	"""

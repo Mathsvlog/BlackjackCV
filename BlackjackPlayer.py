@@ -151,7 +151,8 @@ class BlackjackPlayer:
 		for idx, imageCard in enumerate(cards):
 			imageCard.displayCard(cardDisplay, idx%c, idx/c)
 		# display the cards
-		self.showImage(cardDisplay, "BlackjackCV - Out", 75*c, True)
+		#self.showImage(cardDisplay, "BlackjackCV - Out", 75*c, True)
+		self.showImage(cardDisplay, "BlackjackCV - Out", 110*c, True)
 
 
 	def runCapture(self):
@@ -177,7 +178,7 @@ class BlackjackPlayer:
 		# without webcam, run computations on specific images
 		if not self.hasWebcam:
 			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
-			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,21)):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,22)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
@@ -198,5 +199,4 @@ class BlackjackPlayer:
 				self.analyzeImageForCards(image)
 				self.showImage(image)
 
-
-b = BlackjackPlayer(ignoreWebcam=True)
+b = BlackjackPlayer()
