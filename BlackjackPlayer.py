@@ -30,6 +30,12 @@ class BlackjackPlayer:
 			scale = float(width)/w
 			image = cv2.resize(image, (int(w*scale),int(h*scale)))
 			cv2.imshow(name, image)
+		# move windows to right location
+		if name=="BlackjackCV":
+			cv2.moveWindow(name, 0,0)
+		else:
+			cv2.moveWindow(name, 918,0)
+
 		if not skipWaitKey:
 			# with webcam, wait one frame
 			if self.hasWebcam:
