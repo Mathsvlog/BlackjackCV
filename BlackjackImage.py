@@ -2,6 +2,7 @@ import cv2
 from math import cos,sin,pi,acos
 import numpy as np
 import PointFunctions as pt
+from BlackjackGlobals import *
 
 class BlackjackImage:
 
@@ -38,16 +39,22 @@ class BlackjackImage:
 		ret, imCorners = cv2.threshold(imValues, 0.04*imValues.max(), 255, 0)
 		imCorners = np.uint8(imCorners)
 		_, _, _, centroids = cv2.connectedComponentsWithStats(imCorners)
+
+		# handle situation where center pixel is wrongly considered an edge
+		c = centroids[0]
+		if abs(c[0]-imageX/2)<3 and abs(c[1]-imageY/2)<3 and imCorners[c[1],c[0]]==0:
+			return centroids[1:]
+			
 		return centroids
 
 	"""
 	Draw circles at corner centroids
 	"""
-	def drawCorners(self, cornerCentroids):
+	def drawCorners(self, cornerCentroids, color=(0,255,0)):
 		if self.drawOut:
 			for x,y in cornerCentroids:
 				x,y = int(x),int(y)
-				cv2.circle(self.imageOut, (x,y), 2, (0,255,0), -1)
+				cv2.circle(self.imageOut, (x,y), 2, color, -1)
 
 	"""
 	Returns a list of contours using Canny edge detection

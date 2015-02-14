@@ -5,6 +5,6 @@ _pipAmount = (0.15, 0.25)
 pipSize = tuple(map(lambda i:int(round(cardSize[i]*_pipAmount[i])),(0,1)))
 cardX,cardY = cardSize# card image dimensions
 pipX,pipY = pipSize# pip subimage dimensions
-
+imageX,imageY = 640, 480# standard image size
 # pip sharpen amount
 pipSharpen = 10

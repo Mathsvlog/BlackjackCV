@@ -69,17 +69,16 @@ class BlackjackPlayer:
 
 
 	"""
-	Compute the perspective matrix M to transform a box into a
-	2.5x3.5 ignoreWebcam=Truee
+	Compute the perspective matrix M to transform a box into a 2.5x3.5
+	If image is provided, test for card orientation
 	"""
-	def computePerspective(self, box):
+	def computePerspective(self, box, image=None, badOrientationDetected=False):
 		if isinstance(box[0],tuple):
 			box = map(lambda b:list(b),box)
-		# ensure box points are in circular order
-		if pt.dist(box[0],box[1])>pt.dist(box[2],box[1]):
-			for t1,t2 in [(0,1),(2,3),(1,3)]:
-				for i in range(2):
-					box[t1][i],box[t2][i] = box[t2][i],box[t1][i]
+		# rotate box so that card pips are on correct corners
+		if badOrientationDetected:
+			box = box[1:]+[box[0]]
+
 		# order final points depending if points are ccw 
 		X = [cardX,0,0,cardX]
 		if (pt.ccw(box[0],box[1],box[2])):
@@ -105,9 +104,18 @@ class BlackjackPlayer:
 			A[i2+1][7] = -Y[i]*y[i]
 		# solve AX = B and build projection matrix
 		P = np.linalg.solve(A,B)
-		return np.reshape(np.append(P,1),(3,3))
+		M = np.reshape(np.append(P,1),(3,3))
+		# test card orienation
+		if not image is None:
+			card = cv2.warpPerspective(image.getInputImage(), M, cardSize)
+			if not self.correctCardOrientation(card):
+				return self.computePerspective(box, image=None, badOrientationDetected=True)
+		return M
 
-
+	def correctCardOrientation(self, card):
+		pips = [card[:pipX,:pipX], card[-pipX:,-pipX:], card[-pipX:,:pipX], card[:pipX,-pipX:]]
+		vals = map(lambda p:sum(cv2.mean(p)), pips)
+		return (vals[0]+vals[1]-vals[2]-vals[3])<0
 
 	def analyzeImageForCards(self, image):
 		candidates = image.extractCardCandidates()
@@ -125,9 +133,9 @@ class BlackjackPlayer:
 	def getTransformedCardCandidates(self, image, candidates):
 		cards = []
 		for cand in candidates:
-			M = self.computePerspective(cand)
-			imageCard = cv2.warpPerspective(image.getInputImage(), M, cardSize)
-			cards.append(BlackjackCard(imageCard))			
+			M = self.computePerspective(cand, image)
+			card = cv2.warpPerspective(image.getInputImage(), M, cardSize)
+			cards.append(BlackjackCard(card))
 		return cards
 
 	"""
@@ -168,14 +176,15 @@ class BlackjackPlayer:
 		amount = 0
 		# without webcam, run computations on specific images
 		if not self.hasWebcam:
-			for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
+			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,21)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
 				image = BlackjackImage(frame2)
 				self.analyzeImageForCards(image)
 				self.showImage(image)
-				print
+				print filename
 
 		# with webcam, run computations on webcam images
 		if self.hasWebcam:
