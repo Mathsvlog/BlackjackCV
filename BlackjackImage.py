@@ -112,11 +112,3 @@ class BlackjackImage:
 
 		self.drawCorners(corners)
 		return cardCandidates
-
-"""
-im = cv2.imread("images/3.jpg")
-b =BlackjackImage(im)
-b.extractCardCandidates()
-#b.show()
-cv2.waitKey(0)
-"""
