@@ -6,9 +6,9 @@ class BlackjackComparer:
 
 	def __init__(self):
 		self.orb = cv2.ORB_create()
-		self.orb.setFastThreshold(10)
-		self.orb.setEdgeThreshold(11)
-		self.gridX, self.gridY = 12, 12
+		self.orb.setFastThreshold(5)
+		self.orb.setEdgeThreshold(3)
+		self.gridX, self.gridY = 7,7
 		self._computeTrainSet()
 
 	def _computeTrainSet(self):
@@ -37,27 +37,29 @@ class BlackjackComparer:
 		hist = {(i,j):0 for i in range(nx) for j in range(ny)}
 		h,w,_ = np.shape(im)
 
+		# draw grid lines
+		if draw:
+			for i in xrange(1,nx):
+				cv2.line(im, (w*i/nx, 0), (w*i/nx, h), (255,100,100), 3)
+			for i in xrange(1,ny):
+				cv2.line(im, (0, h*i/ny), (w, h*i/ny), (255,100,100), 3)
+		
 		for k in keys:
 			x,y = k.pt
 			x,y = int(x),int(y)
 			if draw:
-				cv2.circle(im, (x,y), 1, (0,255,0), -1)
+				cv2.circle(im, (x,y), 4, (0,255,0), -1)
+
 			hist[((w-x)*nx/w, (h-y)*ny/h)] += 1
 		total = float(sum(hist.values()))
 		hist = {k:hist[k]/total for k in hist.keys()}
 
-		# draw grid lines
-		if draw:
-			for i in xrange(1,nx):
-				cv2.line(im, (w*i/nx, 0), (w*i/nx, h), (255,0,0))
-			for i in xrange(1,ny):
-				cv2.line(im, (0, h*i/ny), (w, h*i/ny), (255,0,0))
 
 		return hist
 
 
-	def getClosestCard(self, card):
-		h1 = self.computeFeatureHistogram(card)
+	def getClosestCard(self, card, draw=False):
+		h1 = self.computeFeatureHistogram(card, draw)
 		vals = {k: self._compare(h1,self.trainHist[k]) for k in self.trainHist.keys()}
 		match = min(vals, key=vals.get)
 		return match, vals[match]
