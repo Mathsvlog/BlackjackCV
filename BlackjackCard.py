@@ -7,7 +7,7 @@ class BlackjackCard:
 
 	def __init__(self, image):
 		self.card = image
-		self.pips = [image[:pipY,:pipX], image[:-pipY-1:-1,:-pipX-1:-1]]
+		self.pips = [np.copy(image[:pipY,:pipX]), np.copy(image[:-pipY-1:-1,:-pipX-1:-1])]
 		self.pipContours = self._computePipContours()
 		self.name = "?"
 
@@ -53,9 +53,8 @@ class BlackjackCard:
 			display[y:y+pipY,x+pipX:x+pipX*2] = canny
 			"""
 			x += pipX*2
-		#cv2.putText(display, self.name, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 2, 255)
-		cv2.putText(display, self.name, (x,y+pipY/2), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255))
-
+		cv2.putText(display, self.name, (x,y+pipY/2), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,255), thickness=4)
+		
 	def setCardName(self, name):
 		self.name = name
 

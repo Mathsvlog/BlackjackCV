@@ -126,8 +126,15 @@ class BlackjackPlayer:
 		cards = self.filterCards(cards)
 		for c in cards:
 			cardImage = c.getCard()
-			name, value = self.comparer.getClosestCard(cardImage)
+			
+			s,b = 1,5
+			blur = cv2.blur(cardImage, (b,b))
+			sharp = cv2.addWeighted(cardImage, 1+s, blur, -s*.8, 0)
+			c.card = sharp
+			
+			name, value = self.comparer.getClosestCard(c.card, True)
 			print name, value
+			#if value<0.005:
 			if value<0.02:
 				c.setCardName(name)
 		self.displayCards(cards)
@@ -207,7 +214,7 @@ class BlackjackPlayer:
 
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
-				image = BlackjackImage(frame2)
+				image = BlackjackImage(im)
 				self.analyzeImageForCards(image)
 				self.showImage(image)
 				print filename
