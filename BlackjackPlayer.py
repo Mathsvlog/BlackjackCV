@@ -3,12 +3,14 @@ from math import cos,sin,pi,acos
 import numpy as np
 from BlackjackImage import BlackjackImage
 from BlackjackCard import BlackjackCard
+from BlackjackComparer import BlackjackComparer
 import PointFunctions as pt
 from BlackjackGlobals import *
 
 class BlackjackPlayer:
 
 	def __init__(self, doRun=True, ignoreWebcam=False):
+		self.comparer = BlackjackComparer()
 		# init camera if exists
 		if ignoreWebcam:
 			self.hasWebcam = False
@@ -121,6 +123,12 @@ class BlackjackPlayer:
 		candidates = image.extractCardCandidates()
 		cards = self.getTransformedCardCandidates(image, candidates)
 		cards = self.filterCards(cards)
+		for c in cards:
+			cardImage = c.getCard()
+			name, value = self.comparer.getClosestCard(cardImage)
+			print name, value
+			if value<0.02:
+				c.setCardName(name)
 		self.displayCards(cards)
 
 	def filterCards(self, cards):
