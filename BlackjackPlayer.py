@@ -6,6 +6,7 @@ from BlackjackCard import BlackjackCard
 from BlackjackComparer import BlackjackComparer
 import PointFunctions as pt
 from BlackjackGlobals import *
+import operator
 
 class BlackjackPlayer:
 
@@ -130,6 +131,7 @@ class BlackjackPlayer:
 			if value<0.02:
 				c.setCardName(name)
 		self.displayCards(cards)
+		self.cards = cards
 
 	def filterCards(self, cards):
 		for idx,card in reversed(list(enumerate(cards))):
@@ -140,11 +142,20 @@ class BlackjackPlayer:
 
 	def getTransformedCardCandidates(self, image, candidates):
 		cards = []
+		y,x,_ = np.shape(image.getInputImage())
+		order = {}
 		for cand in candidates:
 			M = self.computePerspective(cand, image)
 			card = cv2.warpPerspective(image.getInputImage(), M, cardSize)
+			centerX,centerY = reduce(lambda a,b:(a[0]+b[0], a[1]+b[1]), cand)
+			centerX,centerY = centerX/4., centerY/4.
+			percX, percY = (x-centerX)/x, (y-centerY)/y
+			order[BlackjackCard(card)] = -int(percY*3)-percX
 			cards.append(BlackjackCard(card))
-		return cards
+		
+		cardsSorted = sorted(order.items(), key=operator.itemgetter(1))
+		cardsSorted = [c[0] for c in cardsSorted]
+		return cardsSorted
 
 	"""
 	Extract cards and display them in the output window
@@ -186,14 +197,25 @@ class BlackjackPlayer:
 		# without webcam, run computations on specific images
 		if not self.hasWebcam:
 			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
-			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,22)):
+			#for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,22)):
+			for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
 				im = cv2.imread(filename)
+				
+				y,x,_ = np.shape(im)
+				scale = .2
+				im = cv2.resize(im, (int(x*scale),int(y*scale)))
+
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
 				image = BlackjackImage(frame2)
 				self.analyzeImageForCards(image)
 				self.showImage(image)
 				print filename
+				v = "A23456789TJQK"
+				s = filename[-5]
+				for i in range(13):
+					cv2.imwrite("train/out/"+s+v[i]+".jpg", self.cards[i].card)
+
 
 		# with webcam, run computations on webcam images
 		if self.hasWebcam:
