@@ -135,7 +135,7 @@ class BlackjackPlayer:
 			name, value = self.comparer.getClosestCard(c.card, True)
 			print name, value
 			#if value<0.005:
-			if value<0.02:
+			if value<0.021:
 				c.setCardName(name)
 		self.displayCards(cards)
 		self.cards = cards
@@ -204,25 +204,15 @@ class BlackjackPlayer:
 		# without webcam, run computations on specific images
 		if not self.hasWebcam:
 			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
-			#for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,22)):
-			for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
+			#for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,22)):
 				im = cv2.imread(filename)
-				
-				y,x,_ = np.shape(im)
-				scale = .2
-				im = cv2.resize(im, (int(x*scale),int(y*scale)))
-
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
-				image = BlackjackImage(im)
+				image = BlackjackImage(frame2)
 				self.analyzeImageForCards(image)
 				self.showImage(image)
 				print filename
-				v = "A23456789TJQK"
-				s = filename[-5]
-				for i in range(13):
-					cv2.imwrite("train/out/"+s+v[i]+".jpg", self.cards[i].card)
-
 
 		# with webcam, run computations on webcam images
 		if self.hasWebcam:
