@@ -53,7 +53,7 @@ class BlackjackCard:
 			display[y:y+pipY,x+pipX:x+pipX*2] = canny
 			"""
 			x += pipX*2
-		cv2.putText(display, self.name, (x,y+pipY/2), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,255,255), thickness=4)
+		cv2.putText(display, self.name, (x,y+pipY/2), cv2.FONT_HERSHEY_SIMPLEX, fontSize, (255,255,255), thickness=fontThick)
 		
 	def setCardName(self, name):
 		self.name = name

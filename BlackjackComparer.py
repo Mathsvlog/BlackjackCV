@@ -24,6 +24,7 @@ class BlackjackComparer:
 				name = v+s+".jpg"
 				f = "cards/"+name
 				im = self._getCard(f)
+				im = cv2.resize(im, cardSize)
 				train[v+s] = im
 		self.train = train
 		# tuple containing (card, thresholded card, feature histogram, descriptors)

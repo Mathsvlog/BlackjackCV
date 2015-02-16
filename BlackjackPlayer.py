@@ -1,5 +1,5 @@
 import cv2,os,sys
-from math import cos,sin,pi,acos
+from math import cos,sin,pi,acos,log
 import numpy as np
 from BlackjackImage import BlackjackImage
 from BlackjackCard import BlackjackCard
@@ -136,8 +136,9 @@ class BlackjackPlayer:
 			name, value = names[0], values[0]
 			print name, value, names
 			#if value<0.022:
-			if value<0.004:
-				c.setCardName(name)
+			if value<0.0025:
+				certainty = str(int(log(value, .1)))
+				c.setCardName(name+"_"+certainty)
 		self.displayCards(cards)
 		self.cards = cards
 

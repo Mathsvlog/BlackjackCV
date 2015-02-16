@@ -69,12 +69,12 @@ class BlackjackImage:
 	"""
 	Draw edge contours
 	"""
-	def drawContours(self, contours, color):
+	def drawContours(self, contours, color, thickness=1):
 		if isinstance(contours, np.ndarray):
 			contours = [contours,]
 		if self.drawOut:
 			for c in contours:
-				cv2.drawContours(self.imageOut, [c],0,color,1)
+				cv2.drawContours(self.imageOut, [c],0,color,thickness)
 
 
 	"""
@@ -113,7 +113,7 @@ class BlackjackImage:
 					cornerList.remove(closest)
 
 			if isCard:
-				self.drawContours(appr, (0,0,255))
+				self.drawContours(appr, (0,0,255), 2)
 				cardCandidates.append(self.toPoints(appr))
 
 			else:
