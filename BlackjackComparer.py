@@ -1,6 +1,7 @@
 from BlackjackGlobals import cardSize
 import cv2
 import numpy as np
+from time import time
 
 class BlackjackComparer:
 
@@ -43,12 +44,15 @@ class BlackjackComparer:
 		#matches = self.bf.match(d1, d2)
 		#dMetric = sum(map(lambda m:m.distance, matches))/len(matches)
 
-		_, th1 = cv2.threshold(c1, 128, 255, cv2.THRESH_BINARY)
-		_, th2 = cv2.threshold(c2, 128, 255, cv2.THRESH_BINARY)
+		th1 = self._thresholdCard(c1)
+		th2 = self._thresholdCard(c2)
 		im = cv2.absdiff(th1, th2)
 		tMetric = sum(cv2.mean(im))/max(sum(cv2.mean(th1)),sum(cv2.mean(th2)))
 
 		return hMetric*tMetric
+
+	def _thresholdCard(self, card):
+		return cv2.threshold(card, 128, 255, cv2.THRESH_BINARY)[1]
 
 	def _compare2(self, data1, data2):
 		c1, th1, h1, d1 = data1
@@ -87,7 +91,7 @@ class BlackjackComparer:
 		if total!=0:
 			hist = {k:hist[k]/total for k in hist.keys()}
 
-		_,th = cv2.threshold(im, 128, 255, cv2.THRESH_BINARY)
+		th = self._thresholdCard(im)
 		return (im, th, hist, desc)
 
 
@@ -98,32 +102,30 @@ class BlackjackComparer:
 		return match, vals[match]
 
 	def getClosestCards(self, card, numCards=1):
+		# create score for each card
 		data1 = self.computeData(card, False)
 		vals1 = {k: self._compare2(data1,self.trainData[k]) for k in self.trainData.keys()}
-		
-		## TODO make this work the same, reduce the lag
-		card = card[::-1,::-1]
-		data = self.computeData(card, False)
-		vals2 = {k: self._compare2(data,self.trainData[k]) for k in self.trainData.keys()}
-
-		"""
+		# flip card and recompute scores
 		c,th,hist,d=data1
+		c = c[::-1,::-1]
+		th = self._thresholdCard(c)
 		hist = {(i,j):hist[(self.gridX-i-1, self.gridX-j-1)] for i,j in hist.keys()}
 		data2 = (c,th,hist,d)
 		vals2 = {k: self._compare2(data2,self.trainData[k]) for k in self.trainData.keys()}
-		"""
+		# pick best score for each card
 		vals = {k:min(vals1[k],vals2[k]) for k in vals1.keys()}
-		
-
+		# sort by score and return number of cards requested
 		vals = sorted(vals.items(), key=lambda v:v[1])
 		return zip(*vals[:numCards])
 
 	def _test(self):
 		print "START"
+		t = time()
 		for s in "DCHS":
 			for v in "A23456789TJQK":
 				name = v+s+".jpg"
 				c = cv2.imread("train/original/"+name)
+				c = cv2.resize(c, cardSize)
 				c = cv2.blur(c, (30,30))
 				#match, val = self.getClosestCard(c)
 				matches, values = self.getClosestCards(c, 15)
@@ -132,12 +134,11 @@ class BlackjackComparer:
 						print v+s, matches.index(v+s)
 					else:
 						print v+s, matches
-		print "END"
+		print "END", time()-t
 
 
-#b = BlackjackComparer()
-#b._test()
-
+b = BlackjackComparer()
+b._test()
 
 
 if False:

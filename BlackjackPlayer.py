@@ -135,11 +135,8 @@ class BlackjackPlayer:
 			names, values = self.comparer.getClosestCards(c.card, 5)
 			name, value = names[0], values[0]
 			print name, value, names
-			#if value<0.022:
-			#if value<0.0025:
-			if value<0.003:
-				certainty = str(int(log(value, .1)))
-				c.setCardName(name+"_"+certainty)
+			certainty = str(int(log(value, .15)))
+			c.setCardName(name+"_"+certainty)
 		self.displayCards(cards)
 		self.cards = cards
 
@@ -208,7 +205,7 @@ class BlackjackPlayer:
 		if not self.hasWebcam:
 			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
 			#for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
-			for filename in map(lambda i:"images/"+str(i)+".jpg", range(1,22)):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,22)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
