@@ -7,6 +7,7 @@ from BlackjackComparer import BlackjackComparer
 import PointFunctions as pt
 from BlackjackGlobals import *
 import operator
+from time import sleep
 
 class BlackjackPlayer:
 
@@ -16,8 +17,16 @@ class BlackjackPlayer:
 		if ignoreWebcam:
 			self.hasWebcam = False
 		else:
+			self.camAtt = cv2.CAP_PROP_SHARPNESS
+			self.camAttD = 10
+			self.camAttI = 50
+
 			self.webcam = cv2.VideoCapture(0)
+			if self.camAttI>=0:
+				self.webcam.set(self.camAtt, self.camAttI)
 			self.hasWebcam, frame = self.webcam.read()
+			if self.hasWebcam:
+				print self.webcam.get(self.camAtt)
 			
 		if doRun:
 			self.run()
@@ -42,13 +51,24 @@ class BlackjackPlayer:
 		if not skipWaitKey:
 			# with webcam, wait one frame
 			if self.hasWebcam:
-				if cv2.waitKey(1) & 0xFF == 27:
+				key = cv2.waitKey(1) & 0xFF
+				if key == 27:
 					self.webcam.release()
 					cv2.destroyAllWindows()
 					sys.exit()
+				elif key == ord('e'):
+					value = self.webcam.get(self.camAtt) + self.camAttD
+					self.webcam.set(self.camAtt, value)
+					print value, self.webcam.get(self.camAtt)
+				elif key == ord('d'):
+					value = self.webcam.get(self.camAtt) - self.camAttD
+					self.webcam.set(self.camAtt, 0)
+					print value, self.webcam.get(self.camAtt)
 			# without webcam, show image until keypress
-			elif cv2.waitKey(0) & 0xFF == 27:
-				sys.exit()
+			else:
+				key = cv2.waitKey(1) & 0xFF
+				if key == 27:
+					sys.exit()
 
 	"""
 	rect = ((centerX,centerY),(width,height),(angle))
@@ -160,7 +180,7 @@ class BlackjackPlayer:
 			order[BlackjackCard(card)] = -int(percY*3)-percX
 			cards.append(BlackjackCard(card))
 		
-		cardsSorted = sorted(order.items(), key=operator.itemgetter(1))
+		cardsSorted = sorted(order.items(), key=operator.itemgetter(1))# TODO lambda instead
 		cardsSorted = [c[0] for c in cardsSorted]
 		return cardsSorted
 
@@ -218,11 +238,11 @@ class BlackjackPlayer:
 		if self.hasWebcam:
 			while True:
 				_, frame =self.webcam.read()
-				blur = cv2.blur(frame, blurPixels)
+				#blur = cv2.blur(frame, blurPixels)
 				#frame2 = cv2.addWeighted(frame, 1.5, blur, -0.5, 0)
-				frame2 = cv2.addWeighted(frame, 1+amount, blur, -amount, 0)
+				#frame2 = cv2.addWeighted(frame, 1+amount, blur, -amount, 0)
 				#analyzeImageForCards2(frame2)
-				image = BlackjackImage(frame2)
+				image = BlackjackImage(frame)
 				self.analyzeImageForCards(image)
 				#image = cv2.Canny(image.getInputImage(), 100, 200)
 				self.showImage(image)

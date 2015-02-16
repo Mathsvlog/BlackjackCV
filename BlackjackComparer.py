@@ -137,8 +137,8 @@ class BlackjackComparer:
 		print "END", time()-t
 
 
-b = BlackjackComparer()
-b._test()
+#b = BlackjackComparer()
+#b._test()
 
 
 if False:
