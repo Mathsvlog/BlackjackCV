@@ -101,6 +101,7 @@ class BlackjackComparer:
 		data1 = self.computeData(card, False)
 		vals1 = {k: self._compare2(data1,self.trainData[k]) for k in self.trainData.keys()}
 		
+		## TODO make this work the same, reduce the lag
 		card = card[::-1,::-1]
 		data = self.computeData(card, False)
 		vals2 = {k: self._compare2(data,self.trainData[k]) for k in self.trainData.keys()}
