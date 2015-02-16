@@ -132,10 +132,11 @@ class BlackjackPlayer:
 			sharp = cv2.addWeighted(cardImage, 1+s, blur, -s*.8, 0)
 			c.card = sharp
 			
-			name, value = self.comparer.getClosestCard(c.card, True)
-			print name, value
-			#if value<0.005:
-			if value<0.021:
+			names, values = self.comparer.getClosestCards(c.card, 5)
+			name, value = names[0], values[0]
+			print name, value, names
+			#if value<0.022:
+			if value<0.004:
 				c.setCardName(name)
 		self.displayCards(cards)
 		self.cards = cards
