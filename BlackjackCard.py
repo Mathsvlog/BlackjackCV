@@ -8,17 +8,19 @@ class BlackjackCard:
 	def __init__(self, image):
 		self.card = image
 		self.pips = [np.copy(image[:pipY,:pipX]), np.copy(image[:-pipY-1:-1,:-pipX-1:-1])]
-		self.pipContours = self._computePipContours()
+		self._computePipContours()
 		self.name = "?"
 
 	def _computePipContours(self):
 		pipContours = []
+		pipSharpened = []
 		for pip in self.pips:
 			pipBlur = cv2.blur(pip, pipSize)
-			pipSharpened = cv2.addWeighted(pip, 1+pipSharpen, pipBlur, -pipSharpen, 0)
-			pipCanny = cv2.Canny(pipSharpened, 100, 400)
+			pipSharp = cv2.addWeighted(pip, 1+pipSharpen, pipBlur, -pipSharpen, 0)
+			pipCanny = cv2.Canny(pipSharp, 100, 400)
 			_, contours, _ = cv2.findContours(pipCanny, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-			pipContour = np.copy(pipSharpened)
+			pipContour = np.copy(pipSharp)
+			pipSharpened.append(np.copy(pipSharp))
 			# classify contours as suit, value, and nonimportant
 			for c in contours:
 				center,_ = cv2.minEnclosingCircle(c)
@@ -31,9 +33,8 @@ class BlackjackCard:
 				cv2.drawContours(pipContour, [c],0,color,1)
 			
 			pipContours.append(pipContour)
-			
-
-		return pipContours
+		self.pipSharpened = pipSharpened
+		self.pipContours = pipContours
 
 	"""
 	Place card and pip images onto the display in the correct grid location
