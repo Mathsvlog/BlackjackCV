@@ -2,14 +2,17 @@ import cv2
 import numpy as np
 from BlackjackGlobals import *
 import PointFunctions as pf
-from math import pi
+from math import pi,log
 from BlackjackCard import BlackjackCard
 
 numBinsR = 8
 numBinsT = 12
 #maxRadius = 60
-maxPoints = 100
+maxPoints = 50
 def shapeContext(contour):
+	return shapeContextAll(contour)
+
+def shapeContextOne(contour):
 	x = map(lambda c:c[0][0], contour)
 	y = map(lambda c:c[0][1], contour)
 	#center = (sum(contour)/len(contour))[0]
@@ -23,7 +26,8 @@ def shapeContext(contour):
 		p = contour[i][0]
 		radius,theta = pf.dist(center,p), pf.theta(center,p)
 		theta = theta if theta>0 else theta+2*pi
-		r = int(radius*(numBinsR-1)/maxRadius)
+		#r = int(radius*(numBinsR-1)/maxRadius)
+		r = int(log(radius,maxRadius)*(numBinsR))
 		t = int(theta*(numBinsT-1)/2/pi)
 		if radius > maxRadius:
 			print "BAD RADIUS", radius
@@ -45,7 +49,8 @@ def shapeContextAll(contour):
 				p2 = contour[j][0]
 				radius,theta = pf.dist(p1,p2), pf.theta(p1,p2)
 				theta = theta if theta>0 else theta+2*pi
-				r = int(radius*(numBinsR-1)/maxRadius)
+				#r = int(radius*(numBinsR-1)/maxRadius)
+				r = int(log(radius+1,maxRadius)*(numBinsR))
 				t = int(theta*(numBinsT-1)/2/pi)
 				if radius > maxRadius:
 					print "BAD RADIUS", radius
@@ -83,12 +88,16 @@ def getContours(contours, pip=None):
 			cv2.drawContours(pip, [c],0,color,1)
 	return np.concatenate(value), np.concatenate(suit)
 
-def shapeContextFromCard(filename):
+def contoursFromCard(filename):
 	pip = cv2.resize(cv2.imread(filename), cardSize)[:pipY,:pipX]
 	contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 	#value, suit = getContours(contours)
 	value, suit = getContours(contours,pip)
 	cv2.imshow("", pip)
+	return value,suit
+
+def shapeContextFromCard(filename):
+	value, suit = contoursFromCard(filename)
 	return shapeContext(value), shapeContext(suit)
 
 def test1():
@@ -119,6 +128,14 @@ def test1():
 	print sc.computeDistance(v1, v2)
 	print sc.computeDistance(v1, v3)
 	print sc.computeDistance(v1, v4)
+	# use matchshapes instead
+	m,p = 1,0.0
+	print cv2.matchShapes(v1,v2,m,p)
+	print cv2.matchShapes(v1,v3,m,p)
+	print cv2.matchShapes(v1,v4,m,p)
+	print cv2.matchShapes(v2,v3,m,p)
+	print cv2.matchShapes(v2,v4,m,p)
+	print cv2.matchShapes(v3,v4,m,p)
 	# show images
 	cv2.imshow("1",pip1)
 	cv2.imshow("2",pip2)
@@ -140,15 +157,19 @@ def test1():
 def test2():
 	shapeContextSuit = {}
 	shapeContextValue = {}
+	contourSuit = {}
+	contourValue = {}
 	folder = "train/original/"
 	#folder = "cards/"
-	pipResize = (pipSize[0],int(pipSize[0]*5./3))
+	pipResize = (int(pipSize[1]*3./5),int(pipSize[1]))
 	#pipResize = (90,150)
 	for s in "DCHS":
 		f = "train/pip/"+s+".jpg"
 		pip = cv2.resize(cv2.imread(f), pipResize)
 		contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
-		shapeContextSuit[s] = shapeContext(np.concatenate(contours))
+		contoursAll = np.concatenate(contours)
+		contourSuit[s] = contoursAll
+		shapeContextSuit[s] = shapeContext(contoursAll)
 	"""	
 		for c in contours:
 			cv2.drawContours(pip, [c],0,(0,255,0),1)
@@ -163,7 +184,9 @@ def test2():
 		f = "train/pip/"+v+".jpg"
 		pip = cv2.resize(cv2.imread(f), pipResize)
 		contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
-		shapeContextValue[v] = shapeContext(np.concatenate(contours))
+		contoursAll = np.concatenate(contours)
+		contourValue[v] = contoursAll
+		shapeContextValue[v] = shapeContext(contoursAll)
 	"""
 		for c in contours:
 			cv2.drawContours(pip, [c],0,(0,255,0),1)
@@ -172,11 +195,12 @@ def test2():
 	return
 	"""
 
+	matchMethod = 1
 	for s in "DCHS":
 		for v in "A23456789TJQK":
 			name = v+s
-			value, suit = shapeContextFromCard(folder+name+".jpg")
-			
+			#value, suit = shapeContextFromCard(folder+name+".jpg")
+			value, suit = contoursFromCard(folder+name+".jpg")
 			minSuitDist = float("inf")
 			minSuitValue = float("inf")
 			minSuit = None
@@ -184,19 +208,20 @@ def test2():
 
 			suitDict = {}
 			for key in shapeContextSuit.keys():
-				suitDist = shapeContextDiff(suit,shapeContextSuit[key])
+				#suitDist = shapeContextDiff(suit,shapeContextSuit[key])
+				suitDist = cv2.matchShapes(suit,contourSuit[key],matchMethod,0)
 				suitDict[key] = suitDist
 				if suitDist<minSuitDist:
 					minSuitDist,minSuit = suitDist,key
 
 			for key in shapeContextValue.keys():
-				valueDist = shapeContextDiff(value,shapeContextValue[key])
+				#valueDist = shapeContextDiff(value,shapeContextValue[key])
+				valueDist = cv2.matchShapes(value,contourValue[key],matchMethod,0)
 				if valueDist<minSuitValue:
 					minSuitValue,minValue = valueDist,key
 
 			if name!=minValue+minSuit:
 				print name, "_" if name[0]==minValue else minValue, "_" if name[1]==minSuit else (minSuit,suitDict)
-			cv2.waitKey(0)
-	#cv2.waitKey(0)				
+			cv2.waitKey(0)	
 	
 test2()
