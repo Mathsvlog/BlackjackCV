@@ -6,9 +6,9 @@ from math import pi,log
 from BlackjackCard import BlackjackCard
 
 numBinsR = 8
-numBinsT = 16
+numBinsT = 8
 #maxRadius = 60
-maxPoints = 50
+maxPoints = 200
 def shapeContext(contour):
 	return shapeContextAll(contour)
 
@@ -41,8 +41,9 @@ def shapeContextAll(contour):
 	maxRadius = max(map(lambda c:pf.dist(c[0],center),contour))*2
 	if len(contour)>maxPoints:
 		contour = contour[np.random.choice(len(contour),maxPoints)]
-	bins = np.zeros((numBinsR, numBinsT))
+	points = []
 	for i in xrange(len(contour)):
+		bins = np.zeros((numBinsR, numBinsT))
 		p1 = contour[i][0]
 		for j in xrange(len(contour)):
 			if i!=j:
@@ -56,15 +57,24 @@ def shapeContextAll(contour):
 					print "BAD RADIUS", radius
 				r = r if r<numBinsR else numBinsR-1
 				bins[r,t] += 1
-	bins /= bins.sum()
-	return bins
+		bins /= bins.sum()
+		points.append(bins)
+	return points
 
-def shapeContextDiff(sc1, sc2):
+def shapeContextMatch(pt1, pt2):
 	cost = 0
 	for r in xrange(numBinsR):
 		for t in xrange(numBinsT):
-			val1, val2 = sc1[r,t], sc2[r,t]
-			cost += abs(val1-val2)
+			val1, val2 = pt1[r,t]+1, pt2[r,t]+1
+			cost += (val1-val2)**2/(val1+val2)
+	return cost
+
+def shapeContextDiff(sc1, sc2):
+	cost = 0
+	for i in xrange(len(sc1)):
+		cost += min(map(lambda p:shapeContextMatch(p,sc1[i]), sc2))
+	for i in xrange(len(sc2)):
+		cost += min(map(lambda p:shapeContextMatch(p,sc2[i]), sc1))
 	return cost/numBinsR/numBinsT*100
 
 def angleDistance(contour):
@@ -83,6 +93,26 @@ def angleDistance(contour):
 
 def angleDistanceDiff(ad1, ad2):
 	return 100*sum(map(lambda i: abs(ad1[i]-ad2[i]), xrange(numBinsT)))/numBinsT
+
+def contourCenter(contour):
+	x = map(lambda c:c[0][0], contour)
+	y = map(lambda c:c[0][1], contour)
+	center = ((min(x)+max(x))/2, (min(y)+max(y))/2)
+	return center
+
+def compareContours(contour1, contour2):
+	center1, center2 = contourCenter(contour1), contourCenter(contour2)
+	radius1 = max(map(lambda c:pf.dist(c[0],center1),contour1))
+	radius2 = max(map(lambda c:pf.dist(c[0],center2),contour2))
+	c1 = (contour1-center1)/radius1
+	c2 = (contour2-center2)/radius2
+	if len(c1)<len(c2):
+		c1,c2=c2,c1
+	score = 0
+	for i in xrange(len(c1)):
+		score += min(map(lambda c:pf.dist(c[0],c1[i,0]),c2))
+	return score/len(c1)
+
 
 def p(c):
 	print map(lambda x:list(x[0]),c)
@@ -188,14 +218,14 @@ def test2():
 		contoursAll = np.concatenate(contours)
 		contourSuit[s] = contoursAll
 		shapeContextSuit[s] = shapeContext(contoursAll)
-	"""	
+	
 		for c in contours:
 			cv2.drawContours(pip, [c],0,(0,255,0),1)
 		cv2.imshow(s,pip)
 		#cv2.imshow(s,cv2.Canny(pip, 100, 200))
-	cv2.waitKey(0)
-	return
-	"""
+	#cv2.waitKey(0)
+	#return
+	
 
 
 	for v in "A23456789TJQK":
@@ -213,12 +243,12 @@ def test2():
 	return
 	"""
 
-	matchMethod = 1
+	matchMethod = 3
 	for s in "DCHS":
 		for v in "A23456789TJQK":
 			name = v+s
 			#value, suit = shapeContextFromCard(folder+name+".jpg", False)
-			value, suit = contoursFromCard(folder+name+".jpg", False)
+			value, suit = contoursFromCard(folder+name+".jpg", True)
 			minSuitDist = float("inf")
 			minSuitValue = float("inf")
 			minSuit = None
@@ -287,5 +317,104 @@ def test3():
 			if name!=minValue+minSuit:
 				print name, "_" if name[0]==minValue else minValue, "_" if name[1]==minSuit else (minSuit,suitDict)
 			#cv2.waitKey(0)
+
+def test4():
+	momentsSuit = {}
+	momentsValue = {}
+	folder = "train/original/"
+	pipResize = (int(pipSize[1]*3./5),int(pipSize[1]))
+	for s in "DCHS":
+		f = "train/pip/"+s+".jpg"
+		pip = cv2.resize(cv2.imread(f), pipResize)
+		contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+		contoursAll = np.concatenate(contours)
+		momentsSuit[s] = cv2.moments(contoursAll)
+
+	for v in "A23456789TJQK":
+		f = "train/pip/"+v+".jpg"
+		pip = cv2.resize(cv2.imread(f), pipResize)
+		contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+		contoursAll = np.concatenate(contours)
+		momentsValue[v] = cv2.moments(contoursAll)
+
+	nuKeys = ["nu20", "nu11", "nu02", "nu30", "nu21", "nu12", "nu03"]
+	for s in "DCHS":
+		for v in "A23456789TJQK":
+			name = v+s
+			value, suit = contoursFromCard(folder+name+".jpg", False)
+			value, suit = cv2.moments(value), cv2.moments(suit)
+			minSuitDist = float("inf")
+			minSuitValue = float("inf")
+			minSuit = None
+			minValue = None
+
+			suitDict = {}
+			for key in momentsSuit.keys():
+				suitDist = sum(map(lambda nu:(suit[nu]-momentsSuit[key][nu])**2, nuKeys))
+				suitDict[key] = suitDist
+				if suitDist<minSuitDist:
+					minSuitDist,minSuit = suitDist,key
+
+			for key in momentsValue.keys():
+				valueDist = sum(map(lambda nu:(value[nu]-momentsValue[key][nu])**2, nuKeys))
+				if valueDist<minSuitValue:
+					minSuitValue,minValue = valueDist,key
+
+			if name!=minValue+minSuit:
+				print name, "_" if name[0]==minValue else minValue, "_" if name[1]==minSuit else (minSuit,suitDict)
+			#cv2.waitKey(0)
+
+def test5():
+	contourSuit = {}
+	contourValue = {}
+	folder = "train/original/"
+	pipResize = (int(pipSize[1]*3./5),int(pipSize[1]))
+	for s in "DCHS":
+		f = "train/pip/"+s+".jpg"
+		pip = cv2.resize(cv2.imread(f), pipResize)
+		contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+		contoursAll = np.concatenate(contours)
+		if len(contoursAll)>maxPoints:
+			contoursAll = contoursAll[np.random.choice(len(contoursAll),maxPoints)]
+		contourSuit[s] = contoursAll
+
+	for v in "A23456789TJQK":
+		f = "train/pip/"+v+".jpg"
+		pip = cv2.resize(cv2.imread(f), pipResize)
+		contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+		contoursAll = np.concatenate(contours)
+		if len(contoursAll)>maxPoints:
+			contoursAll = contoursAll[np.random.choice(len(contoursAll),maxPoints)]
+		contourValue[v] = contoursAll
+
+	nuKeys = ["nu20", "nu11", "nu02", "nu30", "nu21", "nu12", "nu03"]
+	for s in "DCHS":
+		for v in "A23456789TJQK":
+			name = v+s
+			value, suit = contoursFromCard(folder+name+".jpg", False)
+			if len(value)>maxPoints:
+				value = value[np.random.choice(len(value),maxPoints)]
+			if len(suit)>maxPoints:
+				suit = suit[np.random.choice(len(suit),maxPoints)]			
+			minSuitDist = float("inf")
+			minSuitValue = float("inf")
+			minSuit = None
+			minValue = None
+
+			suitDict = {}
+			for key in contourSuit.keys():
+				suitDist = compareContours(suit, contourSuit[key])
+				suitDict[key] = suitDist
+				if suitDist<minSuitDist:
+					minSuitDist,minSuit = suitDist,key
+
+			for key in contourValue.keys():
+				valueDist = compareContours(value, contourValue[key])
+				if valueDist<minSuitValue:
+					minSuitValue,minValue = valueDist,key
+
+			if name!=minValue+minSuit:
+				print name, "_" if name[0]==minValue else minValue, "_" if name[1]==minSuit else (minSuit,suitDict)
+			#cv2.waitKey(0)
 	
-test3()
+test5()
