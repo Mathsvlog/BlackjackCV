@@ -6,7 +6,7 @@ from math import pi,log
 from BlackjackCard import BlackjackCard
 
 numBinsR = 8
-numBinsT = 12
+numBinsT = 16
 #maxRadius = 60
 maxPoints = 50
 def shapeContext(contour):
@@ -25,10 +25,10 @@ def shapeContextOne(contour):
 	for i in xrange(len(contour)):
 		p = contour[i][0]
 		radius,theta = pf.dist(center,p), pf.theta(center,p)
-		theta = theta if theta>0 else theta+2*pi
+		theta = theta if theta>=0 else theta+2*pi
 		#r = int(radius*(numBinsR-1)/maxRadius)
 		r = int(log(radius,maxRadius)*(numBinsR))
-		t = int(theta*(numBinsT-1)/2/pi)
+		t = int(theta*(numBinsT)/2/pi)
 		if radius > maxRadius:
 			print "BAD RADIUS", radius
 		r = r if r<numBinsR else numBinsR-1
@@ -48,10 +48,10 @@ def shapeContextAll(contour):
 			if i!=j:
 				p2 = contour[j][0]
 				radius,theta = pf.dist(p1,p2), pf.theta(p1,p2)
-				theta = theta if theta>0 else theta+2*pi
+				theta = theta if theta>=0 else theta+2*pi
 				#r = int(radius*(numBinsR-1)/maxRadius)
 				r = int(log(radius+1,maxRadius)*(numBinsR))
-				t = int(theta*(numBinsT-1)/2/pi)
+				t = int(theta*(numBinsT)/2/pi)
 				if radius > maxRadius:
 					print "BAD RADIUS", radius
 				r = r if r<numBinsR else numBinsR-1
@@ -67,6 +67,22 @@ def shapeContextDiff(sc1, sc2):
 			cost += abs(val1-val2)
 	return cost/numBinsR/numBinsT*100
 
+def angleDistance(contour):
+	x = map(lambda c:c[0][0], contour)
+	y = map(lambda c:c[0][1], contour)
+	center = ((min(x)+max(x))/2., (min(y)+max(y))/2.)
+	maxRadius = max(map(lambda c:pf.dist(c[0],center),contour))
+	distances = [0]*(numBinsT)
+	for i in xrange(len(contour)):
+		p = contour[i][0]
+		radius,theta = pf.dist(center,p)/maxRadius, pf.theta(center, p)
+		theta = theta if theta>=0 else theta+2*pi
+		t = int(theta*(numBinsT)/2/pi)
+		distances[t] = max(distances[t], radius)
+	return distances
+
+def angleDistanceDiff(ad1, ad2):
+	return 100*sum(map(lambda i: abs(ad1[i]-ad2[i]), xrange(numBinsT)))/numBinsT
 
 def p(c):
 	print map(lambda x:list(x[0]),c)
@@ -88,16 +104,18 @@ def getContours(contours, pip=None):
 			cv2.drawContours(pip, [c],0,color,1)
 	return np.concatenate(value), np.concatenate(suit)
 
-def contoursFromCard(filename):
+def contoursFromCard(filename, show):
 	pip = cv2.resize(cv2.imread(filename), cardSize)[:pipY,:pipX]
 	contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
-	#value, suit = getContours(contours)
-	value, suit = getContours(contours,pip)
-	cv2.imshow("", pip)
+	if show:
+		value, suit = getContours(contours,pip)
+		cv2.imshow("", pip)
+	else:
+		value, suit = getContours(contours)
 	return value,suit
 
-def shapeContextFromCard(filename):
-	value, suit = contoursFromCard(filename)
+def shapeContextFromCard(filename, show):
+	value, suit = contoursFromCard(filename, show)
 	return shapeContext(value), shapeContext(suit)
 
 def test1():
@@ -199,8 +217,8 @@ def test2():
 	for s in "DCHS":
 		for v in "A23456789TJQK":
 			name = v+s
-			#value, suit = shapeContextFromCard(folder+name+".jpg")
-			value, suit = contoursFromCard(folder+name+".jpg")
+			#value, suit = shapeContextFromCard(folder+name+".jpg", False)
+			value, suit = contoursFromCard(folder+name+".jpg", False)
 			minSuitDist = float("inf")
 			minSuitValue = float("inf")
 			minSuit = None
@@ -223,5 +241,51 @@ def test2():
 			if name!=minValue+minSuit:
 				print name, "_" if name[0]==minValue else minValue, "_" if name[1]==minSuit else (minSuit,suitDict)
 			cv2.waitKey(0)	
+
+def test3():
+	angleDistanceSuit = {}
+	angleDistanceValue = {}
+	folder = "train/original/"
+	pipResize = (int(pipSize[1]*3./5),int(pipSize[1]))
+	for s in "DCHS":
+		f = "train/pip/"+s+".jpg"
+		pip = cv2.resize(cv2.imread(f), pipResize)
+		contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+		contoursAll = np.concatenate(contours)
+		angleDistanceSuit[s] = angleDistance(contoursAll)
+
+	for v in "A23456789TJQK":
+		f = "train/pip/"+v+".jpg"
+		pip = cv2.resize(cv2.imread(f), pipResize)
+		contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+		contoursAll = np.concatenate(contours)
+		angleDistanceValue[v] = angleDistance(contoursAll)
+
+	matchMethod = 1
+	for s in "DCHS":
+		for v in "A23456789TJQK":
+			name = v+s
+			value, suit = contoursFromCard(folder+name+".jpg", False)
+			adValue, adSuit = angleDistance(value), angleDistance(suit)
+			minSuitDist = float("inf")
+			minSuitValue = float("inf")
+			minSuit = None
+			minValue = None
+
+			suitDict = {}
+			for key in angleDistanceSuit.keys():
+				suitDist = angleDistanceDiff(adSuit, angleDistanceSuit[key])
+				suitDict[key] = suitDist
+				if suitDist<minSuitDist:
+					minSuitDist,minSuit = suitDist,key
+
+			for key in angleDistanceValue.keys():
+				valueDist = angleDistanceDiff(adValue, angleDistanceValue[key])
+				if valueDist<minSuitValue:
+					minSuitValue,minValue = valueDist,key
+
+			if name!=minValue+minSuit:
+				print name, "_" if name[0]==minValue else minValue, "_" if name[1]==minSuit else (minSuit,suitDict)
+			#cv2.waitKey(0)
 	
-test2()
+test3()
