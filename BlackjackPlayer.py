@@ -66,7 +66,7 @@ class BlackjackPlayer:
 					print value, self.webcam.get(self.camAtt)
 			# without webcam, show image until keypress
 			else:
-				key = cv2.waitKey(1) & 0xFF
+				key = cv2.waitKey(0) & 0xFF
 				if key == 27:
 					sys.exit()
 
@@ -146,13 +146,12 @@ class BlackjackPlayer:
 		cards = self.filterCards(cards)
 		for c in cards:
 			cardImage = c.getCard()
-			
 			s,b = 1,5
 			blur = cv2.blur(cardImage, (b,b))
 			sharp = cv2.addWeighted(cardImage, 1+s, blur, -s*.8, 0)
 			c.card = sharp
 			
-			names, values = self.comparer.getClosestCards(c.card, 5)
+			names, values = self.comparer.getClosestCards(c, 5)
 			name, value = names[0], values[0]
 			print name, value, names
 			certainty = str(int(log(value, .15)))

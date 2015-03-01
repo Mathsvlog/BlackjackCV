@@ -183,7 +183,7 @@ def uniformContour(contours):
 			currPoint = contours[c][p][0]
 			dist = pf.dist(lastPoint, currPoint)
 			while distTotal+dist >= lengthPart:
-				t = (lengthPart-distTotal) / dist				
+				t = (lengthPart-distTotal) / dist
 				newPoint = pf.lerp(lastPoint, currPoint, t)
 				sampled.append([newPoint])
 				lastPoint = newPoint
@@ -191,16 +191,13 @@ def uniformContour(contours):
 				distTotal = 0
 			distTotal += dist
 			lastPoint = currPoint
-			
 		p = 0
 		c += 1
 		
-	return sampled
+	return map(lambda s:[[int(round(s[0][0])),int(round(s[0][1]))]], sampled)
 
-def contoursFromCard(filename, show):
-	card = BlackjackCard(cv2.resize(cv2.imread(filename), cardSize))
+def contoursFromCard(card, show):
 	pip = card.pipThresholded[0]
-	#pip = cv2.resize(cv2.imread(filename), cardSize)[:pipY,:pipX]
 	contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 	
 	if show:
@@ -210,8 +207,18 @@ def contoursFromCard(filename, show):
 		value, suit = getContours(contours)
 	return value,suit
 
-def shapeContextFromCard(filename, show):
-	value, suit = contoursFromCard(filename, show)
+def contoursFromFile(filename, show):
+	card = BlackjackCard(cv2.resize(cv2.imread(filename), cardSize))
+	contoursFromCard(card, show)
+
+def shapeContextFromCard(card, show=False):
+	value, suit = contoursFromCard(card, show)
+	if len(value)==0 or len(suit)==0:
+		return None, None
+	return shapeContext(value), shapeContext(suit)
+
+def shapeContextFromFile(filename, show):
+	value, suit = contoursFromFile(filename, show)
 	if len(value)==0 or len(suit)==0:
 		return None, None
 	return shapeContext(value), shapeContext(suit)
@@ -321,7 +328,7 @@ def test2():
 	for s in "DCHS":
 		for v in "A23456789TJQK":
 			name = v+s
-			value, suit = shapeContextFromCard(folder+name+".jpg", True)# show
+			value, suit = shapeContextFromFile(folder+name+".jpg", True)# show
 			if value==None or suit==None:
 				print name, "UNCATEGORIZABLE"
 				cv2.waitKey(0)
@@ -376,7 +383,7 @@ def test3():
 	for s in "DCHS":
 		for v in "A23456789TJQK":
 			name = v+s
-			value, suit = contoursFromCard(folder+name+".jpg", False)
+			value, suit = contoursFromFile(folder+name+".jpg", False)
 			adValue, adSuit = angleDistance(value), angleDistance(suit)
 			minSuitDist = float("inf")
 			minSuitValue = float("inf")
@@ -422,7 +429,7 @@ def test4():
 	for s in "DCHS":
 		for v in "A23456789TJQK":
 			name = v+s
-			value, suit = contoursFromCard(folder+name+".jpg", False)
+			value, suit = contoursFromFile(folder+name+".jpg", False)
 			value, suit = cv2.moments(value), cv2.moments(suit)
 			minSuitDist = float("inf")
 			minSuitValue = float("inf")
@@ -472,7 +479,7 @@ def test5():
 	for s in "DCHS":
 		for v in "A23456789TJQK":
 			name = v+s
-			value, suit = contoursFromCard(folder+name+".jpg", False)
+			value, suit = contoursFromFile(folder+name+".jpg", False)
 			if len(value)>maxPoints:
 				value = value[np.random.choice(len(value),maxPoints)]
 			if len(suit)>maxPoints:
@@ -498,6 +505,6 @@ def test5():
 				print name, "_" if name[0]==minValue else minValue, "_" if name[1]==minSuit else (minSuit,suitDict)
 			#cv2.waitKey(0)
 	
-test2()
+#test2()
 #import cProfile
 #cProfile.run("test2()")

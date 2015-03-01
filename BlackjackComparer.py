@@ -2,6 +2,7 @@ from BlackjackGlobals import cardSize
 import cv2
 import numpy as np
 from time import time
+import ShapeContext as sc
 
 class BlackjackComparer:
 
@@ -30,6 +31,21 @@ class BlackjackComparer:
 		self.train = train
 		# tuple containing (card, thresholded card, feature histogram, descriptors)
 		self.trainData = {k: self.computeData(train[k]) for k in train.keys()}
+		
+		self.shapeContextSuit = {}
+		self.shapeContextValue = {}
+		for s in "DCHS":
+			f = "train/pip/"+s+".jpg"
+			pip = cv2.imread(f)
+			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+			contoursAll = sc.uniformContour(contours)
+			self.shapeContextSuit[s] = sc.shapeContext(contoursAll)
+		for v in "A23456789TJQK":
+			f = "train/pip/"+v+".jpg"
+			pip = cv2.imread(f)
+			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+			contoursAll = sc.uniformContour(contours)
+			self.shapeContextValue[v] = sc.shapeContext(contoursAll)
 
 	def _getCard(self, filename):
 		im = cv2.imread(filename)
@@ -62,6 +78,9 @@ class BlackjackComparer:
 		h3 = {k: abs(h1[k] - h2[k]) for k in h1.keys()}
 		hMetric = sum(h3.values())/len(h3.values())
 		return tMetric*hMetric
+
+	def _compare3(self, data1, data2):
+		return
 
 	def computeData(self, im, draw=False):
 		nx,ny = self.gridX, self.gridY
@@ -102,18 +121,36 @@ class BlackjackComparer:
 		return match, vals[match]
 
 	def getClosestCards(self, card, numCards=1):
-		# create score for each card
-		data1 = self.computeData(card, False)
-		vals1 = {k: self._compare2(data1,self.trainData[k]) for k in self.trainData.keys()}
-		# flip card and recompute scores
-		c,th,hist,d=data1
-		c = c[::-1,::-1]
-		th = self._thresholdCard(c)
-		hist = {(i,j):hist[(self.gridX-i-1, self.gridX-j-1)] for i,j in hist.keys()}
-		data2 = (c,th,hist,d)
-		vals2 = {k: self._compare2(data2,self.trainData[k]) for k in self.trainData.keys()}
-		# pick best score for each card
-		vals = {k:min(vals1[k],vals2[k]) for k in vals1.keys()}
+		suit, value = sc.shapeContextFromCard(card)
+		
+		# incorporate shape context
+		if suit!=None and value!=None:
+			vals = {}
+			for s in "DCHS":
+				sScore = sc.shapeContextDiff(suit, self.shapeContextSuit[s])
+				for v in "A23456789TJQK":
+					vals[v+s] = sScore
+			for v in "A23456789TJQK":
+				vScore = sc.shapeContextDiff(value, self.shapeContextValue[v])
+				for s in "DCHS":
+					vals[v+s] += vScore
+			numCards = 2
+
+		else:
+			image = card.card
+			# create score for each card
+			data1 = self.computeData(image, False)
+			vals1 = {k: self._compare2(data1,self.trainData[k]) for k in self.trainData.keys()}
+			# flip card and recompute scores
+			c,th,hist,d=data1
+			c = c[::-1,::-1]
+			th = self._thresholdCard(c)
+			hist = {(i,j):hist[(self.gridX-i-1, self.gridX-j-1)] for i,j in hist.keys()}
+			data2 = (c,th,hist,d)
+			vals2 = {k: self._compare2(data2,self.trainData[k]) for k in self.trainData.keys()}
+			# pick best score for each card
+			vals = {k:min(vals1[k],vals2[k]) for k in vals1.keys()}
+		
 		# sort by score and return number of cards requested
 		vals = sorted(vals.items(), key=lambda v:v[1])
 		return zip(*vals[:numCards])

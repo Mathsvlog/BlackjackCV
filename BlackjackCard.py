@@ -11,9 +11,6 @@ class BlackjackCard:
 		
 		self._adjustPips(image)		
 
-		cv2.imshow("p1",self.pips[0])
-		cv2.imshow("p2",self.pips[1])
-
 		self._computePipContours()
 		self.name = "?"
 
@@ -48,8 +45,11 @@ class BlackjackCard:
 			pipContour = np.copy(pipSharp)
 			pipSharpened.append(np.copy(pipSharp))
 
-			threshold = cv2.cvtColor(cv2.threshold(cv2.cvtColor(pipSharp, cv2.COLOR_BGR2GRAY), 128, 255, cv2.THRESH_BINARY)[1], cv2.COLOR_GRAY2BGR)
+			threshold = cv2.cvtColor(pipSharp, cv2.COLOR_BGR2GRAY)
+			th = np.mean(threshold)
+			threshold = cv2.cvtColor(cv2.threshold(threshold, th, 255, cv2.THRESH_BINARY)[1], cv2.COLOR_GRAY2BGR)
 			pipThresholded.append(threshold)
+
 			# classify contours as suit, value, and nonimportant
 			for c in contours:
 				center,_ = cv2.minEnclosingCircle(c)
@@ -74,7 +74,7 @@ class BlackjackCard:
 		x,y = cardX*i, (cardY+pipY)*j
 		display[y:y+cardY,x:x+cardX] = self.card
 		y += cardY
-		for pip,pipContour in zip(self.pips,self.pipContours):
+		for pip,pipContour in zip(self.pips,self.pipThresholded):
 			display[y:y+pipY,x:x+pipX] = pip
 			display[y:y+pipY,x+pipX:x+pipX*2] = pipContour
 			"""
