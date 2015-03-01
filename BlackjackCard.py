@@ -27,6 +27,7 @@ class BlackjackCard:
 				#print col, row
 				#print col, cvalsavg
 				#print cvals
+				row = 0
 				self.pips[i] = np.copy(image[row:row+pipY,col:col+pipX])
 			else:
 				col += 1

@@ -196,7 +196,6 @@ class BlackjackPlayer:
 		for idx, imageCard in enumerate(cards):
 			imageCard.displayCard(cardDisplay, idx%c, idx/c)
 		# display the cards
-		#self.showImage(cardDisplay, "BlackjackCV - Out", 75*c, True)
 		self.showImage(cardDisplay, "BlackjackCV - Out", 110*c, True)
 
 

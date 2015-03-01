@@ -7,8 +7,8 @@ from BlackjackCard import BlackjackCard
 from random import seed
 
 seed(0)
-numBinsR = 4
-numBinsT = 4
+numBinsR = 6
+numBinsT = 6
 #maxRadius = 60
 maxPoints = 50
 radiusLog = 2*(2**.5)+1.01
@@ -97,7 +97,7 @@ def shapeContextDiff(sc1, sc2):
 		shapeCost += shapeContextMatch(sc2[p2], sc1[twoToOne[p2]])
 	shapeCost /= numPoints
 
-	return shapeCost
+	return shapeCost#*distCost
 
 def angleDistance(contour):
 	x = map(lambda c:c[0][0], contour)
@@ -198,18 +198,19 @@ def uniformContour(contours):
 
 def contoursFromCard(card, show):
 	pip = card.pipThresholded[0]
+	#pip = card.pipSharpened[0]
 	contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
-	
+	print len(contours)
 	if show:
 		value, suit = getContours(contours,pip)
 		cv2.imshow("", pip)
 	else:
-		value, suit = getContours(contours)
+		value, suit = getContours(contours,pip)
 	return value,suit
 
 def contoursFromFile(filename, show):
 	card = BlackjackCard(cv2.resize(cv2.imread(filename), cardSize))
-	contoursFromCard(card, show)
+	return contoursFromCard(card, show)
 
 def shapeContextFromCard(card, show=False):
 	value, suit = contoursFromCard(card, show)
@@ -357,7 +358,7 @@ def test2():
 			if name!=minValue+minSuit:
 				#print name, "_" if name[0]==minValue else minValue, "_" if name[1]==minSuit else (minSuit,suitDict)
 				print name, "_" if name[0]==minValue else (minValue,sorted(valueDict.items(), key=lambda x:x[1])), "_" if name[1]==minSuit else (minSuit,suitDict)
-				#cv2.waitKey(0)
+				cv2.waitKey(0)
 			
 
 def test3():

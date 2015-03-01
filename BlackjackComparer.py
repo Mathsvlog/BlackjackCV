@@ -121,36 +121,33 @@ class BlackjackComparer:
 		return match, vals[match]
 
 	def getClosestCards(self, card, numCards=1):
-		suit, value = sc.shapeContextFromCard(card)
+		image = card.card
+		# create score for each card
+		data1 = self.computeData(image, False)
+		vals1 = {k: self._compare2(data1,self.trainData[k]) for k in self.trainData.keys()}
+		# flip card and recompute scores
+		c,th,hist,d=data1
+		c = c[::-1,::-1]
+		th = self._thresholdCard(c)
+		hist = {(i,j):hist[(self.gridX-i-1, self.gridX-j-1)] for i,j in hist.keys()}
+		data2 = (c,th,hist,d)
+		vals2 = {k: self._compare2(data2,self.trainData[k]) for k in self.trainData.keys()}
+		# pick best score for each card
+		vals = {k:min(vals1[k],vals2[k]) for k in vals1.keys()}
 		
 		# incorporate shape context
+		suit, value = sc.shapeContextFromCard(card)
 		if suit!=None and value!=None:
-			vals = {}
+			shapeContextVals = {}
 			for s in "DCHS":
 				sScore = sc.shapeContextDiff(suit, self.shapeContextSuit[s])
 				for v in "A23456789TJQK":
-					vals[v+s] = sScore
+					shapeContextVals[v+s] = sScore
 			for v in "A23456789TJQK":
 				vScore = sc.shapeContextDiff(value, self.shapeContextValue[v])
 				for s in "DCHS":
-					vals[v+s] += vScore
-			numCards = 2
-
-		else:
-			image = card.card
-			# create score for each card
-			data1 = self.computeData(image, False)
-			vals1 = {k: self._compare2(data1,self.trainData[k]) for k in self.trainData.keys()}
-			# flip card and recompute scores
-			c,th,hist,d=data1
-			c = c[::-1,::-1]
-			th = self._thresholdCard(c)
-			hist = {(i,j):hist[(self.gridX-i-1, self.gridX-j-1)] for i,j in hist.keys()}
-			data2 = (c,th,hist,d)
-			vals2 = {k: self._compare2(data2,self.trainData[k]) for k in self.trainData.keys()}
-			# pick best score for each card
-			vals = {k:min(vals1[k],vals2[k]) for k in vals1.keys()}
-		
+					shapeContextVals[v+s] += vScore
+			vals = {k:vals[k]*shapeContextVals[k] for k in vals.keys()}
 		# sort by score and return number of cards requested
 		vals = sorted(vals.items(), key=lambda v:v[1])
 		return zip(*vals[:numCards])

@@ -7,7 +7,7 @@ cardX,cardY = cardSize# card image dimensions
 pipX,pipY = pipSize# pip subimage dimensions
 imageX,imageY = 640, 480# standard image size
 # pip sharpen amount
-pipSharpen = 1.5
+pipSharpen = .5
 
 fontSize = _cardScale
 fontThick = max(1,int(_cardScale*2))
