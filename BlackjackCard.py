@@ -8,12 +8,38 @@ class BlackjackCard:
 	def __init__(self, image):
 		self.card = image
 		self.pips = [np.copy(image[:pipY,:pipX]), np.copy(image[:-pipY-1:-1,:-pipX-1:-1])]
+		
+		self._adjustPips(image)		
+
+		cv2.imshow("p1",self.pips[0])
+		cv2.imshow("p2",self.pips[1])
+
 		self._computePipContours()
 		self.name = "?"
+
+	def _adjustPips(self,image):
+		for i in range(2):
+			p = self.pips[i]
+			cvals = np.min(np.min(p, axis=2), axis=1)
+			cvalsavg = np.mean(cvals)
+			col = max(0,np.argmax(cvals<cvalsavg))/2
+			rvals = np.min(np.min(p, axis=2), axis=0)
+			rvalsavg = np.mean(rvals)
+			row = max(0,np.argmax(rvals<rvalsavg))/2
+			if i==0:
+				#print col, row
+				#print col, cvalsavg
+				#print cvals
+				self.pips[i] = np.copy(image[row:row+pipY,col:col+pipX])
+			else:
+				col += 1
+				col = 1
+				self.pips[i] = np.copy(image[:-pipY-1:-1,-col:-pipX-col:-1])
 
 	def _computePipContours(self):
 		pipContours = []
 		pipSharpened = []
+		pipThresholded = []
 		for pip in self.pips:
 			pipBlur = cv2.blur(pip, pipSize)
 			pipSharp = cv2.addWeighted(pip, 1+pipSharpen, pipBlur, -pipSharpen, 0)
@@ -21,10 +47,14 @@ class BlackjackCard:
 			_, contours, _ = cv2.findContours(pipCanny, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 			pipContour = np.copy(pipSharp)
 			pipSharpened.append(np.copy(pipSharp))
+
+			threshold = cv2.cvtColor(cv2.threshold(cv2.cvtColor(pipSharp, cv2.COLOR_BGR2GRAY), 128, 255, cv2.THRESH_BINARY)[1], cv2.COLOR_GRAY2BGR)
+			pipThresholded.append(threshold)
 			# classify contours as suit, value, and nonimportant
 			for c in contours:
 				center,_ = cv2.minEnclosingCircle(c)
-				if cv2.contourArea(c)==0 or abs(center[0]-pipX/2)/pipX>.4:
+				#if cv2.contourArea(c)==0 or abs(center[0]-pipX/2)/pipX>.4:
+				if cv2.contourArea(c)==0:
 					color = (255,255,0)
 				elif ((pipY-center[1])/pipY < 0.4):
 					color = (255,0,0)
@@ -35,6 +65,7 @@ class BlackjackCard:
 			pipContours.append(pipContour)
 		self.pipSharpened = pipSharpened
 		self.pipContours = pipContours
+		self.pipThresholded = pipThresholded
 
 	"""
 	Place card and pip images onto the display in the correct grid location
