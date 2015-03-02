@@ -2,54 +2,24 @@ from BlackjackGlobals import cardSize,pipPartSize
 import cv2
 import numpy as np
 from time import time
-import ShapeContext as sc
+from BlackjackCard import BlackjackCard
 
 class BlackjackComparer:
 
 	def __init__(self):
-		# ORB used for feature detection
-		self.orb = cv2.ORB_create()
-		self.orb.setFastThreshold(5)
-		self.orb.setEdgeThreshold(3)
-		#self.orb.setMaxFeatures(200)
-
-		self.bf = cv2.BFMatcher()
-		# histogram grid size
-		self.gridX, self.gridY = 7,7
-		# read 52 input cards and extract features
 		self._computeTrainSet()
 
 	def _computeTrainSet(self):
-		train = {}
-		for v in "A23456789TJQK":
-			for s in "DCHS":
-				name = v+s+".jpg"
-				f = "cards/"+name
-				im = self._getCard(f)
-				im = cv2.resize(im, cardSize)
-				train[v+s] = im
-		self.train = train
-		# tuple containing (card, thresholded card, feature histogram, descriptors)
-		self.trainData = {k: self.computeData(train[k]) for k in train.keys()}
-		
-		self.shapeContextSuit = {}
-		self.shapeContextValue = {}
 		self.pipSuits = {}
 		self.pipValues = {}
 		for s in "DCHS":
 			f = "pips/"+s+".jpg"
 			pip = cv2.imread(f)
 			self.pipSuits[s] = self._thresholdCard(cv2.resize(self._trim(pip), pipPartSize))
-			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
-			contoursAll = sc.uniformContour(contours)
-			self.shapeContextSuit[s] = sc.shapeContext(contoursAll)
 		for v in "A23456789TJQK":
 			f = "pips/"+v+".jpg"
 			pip = cv2.imread(f)
 			self.pipValues[v] = self._thresholdCard(cv2.cvtColor(cv2.resize(self._trim(pip), pipPartSize), cv2.COLOR_BGR2GRAY))
-			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
-			contoursAll = sc.uniformContour(contours)
-			self.shapeContextValue[v] = sc.shapeContext(contoursAll)
 
 	def _trim(self, image):
 		trimmed = np.copy(image)
@@ -72,37 +42,12 @@ class BlackjackComparer:
 
 	def _getCard(self, filename):
 		im = cv2.imread(filename)
-		#im = cv2.resize(im, cardSize)
 		return im
-
-	def _compare(self, data1, data2):
-		c1, h1, d1 = data1
-		c2, h2, d2 = data2
-		h3 = {k: abs(h1[k] - h2[k]) for k in h1.keys()}
-		hMetric = sum(h3.values())/len(h3.values())
-		#matches = self.bf.match(d1, d2)
-		#dMetric = sum(map(lambda m:m.distance, matches))/len(matches)
-
-		th1 = self._thresholdCard(c1)
-		th2 = self._thresholdCard(c2)
-		im = cv2.absdiff(th1, th2)
-		tMetric = sum(cv2.mean(im))/max(sum(cv2.mean(th1)),sum(cv2.mean(th2)))
-
-		return hMetric*tMetric
 
 	def _thresholdCard(self, card):
 		return cv2.threshold(card, 128, 255, cv2.THRESH_BINARY)[1]
 
-	def _compare2(self, data1, data2):
-		c1, th1, h1, d1 = data1
-		c2, th2, h2, d2 = data2
-		im = cv2.absdiff(th1, th2)
-		tMetric = sum(cv2.mean(im))/max(sum(cv2.mean(th1)),sum(cv2.mean(th2)))
-		h3 = {k: abs(h1[k] - h2[k]) for k in h1.keys()}
-		hMetric = sum(h3.values())/len(h3.values())
-		return tMetric*hMetric
-
-	def _compare3(self, im1, im2):
+	def _compare(self, im1, im2):
 		im3 = cv2.absdiff(im1,im2)
 		score = np.mean(im3)/np.mean(im2)
 		if False:
@@ -116,90 +61,16 @@ class BlackjackComparer:
 			cv2.waitKey(0)
 		return score
 
-
-	def computeData(self, im, draw=False):
-		nx,ny = self.gridX, self.gridY
-		
-		keys,desc = self.orb.detectAndCompute(im, None)
-
-		hist = {(i,j):0 for i in range(nx) for j in range(ny)}
-		h,w,_ = np.shape(im)
-		# draw grid lines
-		if draw:
-			for i in xrange(1,nx):
-				cv2.line(im, (w*i/nx, 0), (w*i/nx, h), (255,100,100), 3)
-			for i in xrange(1,ny):
-				cv2.line(im, (0, h*i/ny), (w, h*i/ny), (255,100,100), 3)
-		# compute distribution of keypoints in grid
-		for k in keys:
-			x,y = k.pt
-			x,y = int(x),int(y)
-			if draw:
-				cv2.circle(im, (x,y), 4, (0,255,0), -1)
-			i,j = (w-x)*nx/w, (h-y)*ny/h
-			#if i!=0 and i!=nx-1:
-			hist[(i, j)] += k.size
-
-		# normalize histogram
-		total = float(sum(hist.values()))
-		if total!=0:
-			hist = {k:hist[k]/total for k in hist.keys()}
-
-		th = self._thresholdCard(im)
-		return (im, th, hist, desc)
-
-
-	def getClosestCard(self, card, draw=False):
-		h1 = self.computeData(card, draw)
-		vals = {k: self._compare2(h1,self.trainData[k]) for k in self.trainData.keys()}
-		match = min(vals, key=vals.get)
-		return match, vals[match]
-
 	def getClosestCards(self, card, numCards=1):
-		"""
-		image = card.card
-		# create score for each card
-		data1 = self.computeData(image, False)
-		vals1 = {k: self._compare2(data1,self.trainData[k]) for k in self.trainData.keys()}
-		# flip card and recompute scores
-		c,th,hist,d=data1
-		c = c[::-1,::-1]
-		th = self._thresholdCard(c)
-		hist = {(i,j):hist[(self.gridX-i-1, self.gridX-j-1)] for i,j in hist.keys()}
-		data2 = (c,th,hist,d)
-		vals2 = {k: self._compare2(data2,self.trainData[k]) for k in self.trainData.keys()}
-		# pick best score for each card
-		vals = {k:min(vals1[k],vals2[k]) for k in vals1.keys()}
-		"""
-		# incorporate shape context
-		"""
-		suit, value = sc.shapeContextFromCard(card)
-		if suit!=None and value!=None:
-			shapeContextVals = {}
-			for s in "DCHS":
-				sScore = sc.shapeContextDiff(suit, self.shapeContextSuit[s])
-				for v in "A23456789TJQK":
-					shapeContextVals[v+s] = sScore
-			for v in "A23456789TJQK":
-				vScore = sc.shapeContextDiff(value, self.shapeContextValue[v])
-				for s in "DCHS":
-					shapeContextVals[v+s] += vScore
-			vals = {k:vals[k]*shapeContextVals[k] for k in vals.keys()}
-		"""
-		
 		suitVals = {s:float("inf") for s in "DCHS"}
 		valueVals = {v:float("inf") for v in "A23456789TJQK"}
 		for i in range(2):
 			for s in "DCHS":
-				sScore = self._compare3(card.suits[i], self.pipSuits[s])
+				sScore = self._compare(card.suits[i], self.pipSuits[s])
 				suitVals[s] = min(suitVals[s], sScore)
-				#for v in "A23456789TJQK":
-					#vals[v+s] += sScore
 			for v in "A23456789TJQK":
-				vScore = self._compare3(card.values[i], self.pipValues[v])
+				vScore = self._compare(card.values[i], self.pipValues[v])
 				valueVals[v] = min(valueVals[v], vScore)
-				#for s in "DCHS":
-					#vals[v+s] += vScore
 		vals = {v+s:suitVals[s]+valueVals[v] for s in "DCHS" for v in"A23456789TJQK"}
 		
 		# sort by score and return number of cards requested
@@ -214,12 +85,16 @@ class BlackjackComparer:
 				name = v+s+".jpg"
 				c = cv2.imread("train/original/"+name)
 				c = cv2.resize(c, cardSize)
-				c = cv2.blur(c, (30,30))
+				c = cv2.blur(c, (5,5))
+				card = BlackjackCard(c)
+				cv2.imshow("", card.getCard())
+				cv2.waitKey(0)
+
 				#match, val = self.getClosestCard(c)
-				matches, values = self.getClosestCards(c, 15)
+				matches, values = self.getClosestCards(card, 15)
 				if matches[0] != v+s:
 					if v+s in matches:
-						print v+s, matches.index(v+s)
+						print v+s, matches.index(v+s), matches
 					else:
 						print v+s, matches
 		print "END", time()-t
