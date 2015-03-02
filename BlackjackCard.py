@@ -2,9 +2,12 @@ import cv2
 import numpy as np
 from BlackjackGlobals import *
 
-
 class BlackjackCard:
 
+	"""
+	Class for an image of a playing card.
+	Automatically extracts suit and value from pip corners
+	"""
 	def __init__(self, image):
 		self.card = image
 		self.pips = [np.copy(image[:pipY,:pipX]), np.copy(image[:-pipY-1:-1,:-pipX-1:-1])]
@@ -12,7 +15,9 @@ class BlackjackCard:
 		self._extractPipParts()
 		self.name = "?"
 
-	# extract the suit and value subimages from the pip images
+	"""
+	Extract the suit and value subimages from the pip images
+	"""
 	def _extractPipParts(self):
 		doShow = False
 		self.suits = []
@@ -70,7 +75,9 @@ class BlackjackCard:
 		if doShow:
 			cv2.waitKey(0)
 	
-	# sharpen the pip corners and save as images
+	"""
+	Sharpen the pip corners images and save as new images
+	"""
 	def _computePipSharpened(self):
 		self.pipSharpened = []
 		for pip in self.pips:
@@ -96,7 +103,10 @@ class BlackjackCard:
 			display[y+dy+1:y+pipY,x+pipX:x+pipX*2] = cv2.resize(suit, (pipX, dy))
 			x += pipX*2
 		cv2.putText(display, self.name, (x,y+pipY/2), cv2.FONT_HERSHEY_SIMPLEX, fontSize, (255,255,255), thickness=fontThick)
-		
+	
+	"""
+	Name used as the identity of a playing card (as in, suit and value)
+	"""
 	def setCardName(self, name):
 		self.name = name
 

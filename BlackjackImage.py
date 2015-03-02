@@ -6,6 +6,9 @@ from BlackjackGlobals import *
 
 class BlackjackImage:
 
+	"""
+	Class for an input image to analyze for playing cards
+	"""
 	def __init__(self, image, drawImageOut=True):
 		self.image = image
 		self.imageGrey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -24,6 +27,9 @@ class BlackjackImage:
 	def getOutputImage(self):
 		return self.imageOut
 
+	"""
+	Show image on a window
+	"""
 	def show(self, name="BlackjackCV", width=900):
 		im = self.imageOut if self.drawOut else self.image
 		w,h = len(im[0]),len(im)

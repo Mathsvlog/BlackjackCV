@@ -6,21 +6,30 @@ from BlackjackCard import BlackjackCard
 
 class BlackjackComparer:
 
+	"""
+	Class for identifying the suit and value of playing card images
+	"""
 	def __init__(self):
 		self._computeTrainSet()
 
+	"""
+	Computes the images that are used to test against all input cards
+	"""
 	def _computeTrainSet(self):
 		self.pipSuits = {}
 		self.pipValues = {}
 		for s in "DCHS":
 			f = "pips/"+s+".jpg"
 			pip = cv2.imread(f)
-			self.pipSuits[s] = self._thresholdCard(cv2.resize(self._trim(pip), pipPartSize))
+			self.pipSuits[s] = self._threshold(cv2.resize(self._trim(pip), pipPartSize))
 		for v in "A23456789TJQK":
 			f = "pips/"+v+".jpg"
 			pip = cv2.imread(f)
-			self.pipValues[v] = self._thresholdCard(cv2.cvtColor(cv2.resize(self._trim(pip), pipPartSize), cv2.COLOR_BGR2GRAY))
+			self.pipValues[v] = self._threshold(cv2.cvtColor(cv2.resize(self._trim(pip), pipPartSize), cv2.COLOR_BGR2GRAY))
 
+	"""
+	Trims the outer white border of an image. Used for trimming pips
+	"""
 	def _trim(self, image):
 		trimmed = np.copy(image)
 		for ax in [0,1]:
@@ -44,9 +53,16 @@ class BlackjackComparer:
 		im = cv2.imread(filename)
 		return im
 
-	def _thresholdCard(self, card):
-		return cv2.threshold(card, 128, 255, cv2.THRESH_BINARY)[1]
+	"""
+	Thresholds an image
+	"""
+	def _threshold(self, image):
+		return cv2.threshold(image, 128, 255, cv2.THRESH_BINARY)[1]
 
+	"""
+	Compares a score for the similarity of two images.
+	Used for comparing an input image against part of the training set
+	"""
 	def _compare(self, im1, im2):
 		im3 = cv2.absdiff(im1,im2)
 		score = np.mean(im3)/np.mean(im2)
@@ -61,6 +77,10 @@ class BlackjackComparer:
 			cv2.waitKey(0)
 		return score
 
+	"""
+	Runs the input BlackjackCard against the 13 values and 4 suits in the
+	training set. Returns a list of the most likely matches. 
+	"""
 	def getClosestCards(self, card, numCards=1):
 		suitVals = {s:float("inf") for s in "DCHS"}
 		valueVals = {v:float("inf") for v in "A23456789TJQK"}

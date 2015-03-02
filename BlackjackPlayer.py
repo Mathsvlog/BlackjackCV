@@ -11,6 +11,9 @@ from time import sleep
 
 class BlackjackPlayer:
 
+	"""
+	Main class for playing Blackjack using a webcam or with input images
+	"""
 	def __init__(self, doRun=True, ignoreWebcam=False):
 		self.comparer = BlackjackComparer()
 		# init camera if exists
@@ -131,25 +134,35 @@ class BlackjackPlayer:
 		# test card orienation
 		if not image is None:
 			card = cv2.warpPerspective(image.getInputImage(), M, cardSize)
-			if not self.correctCardOrientation(card):
+			if not self._correctCardOrientation(card):
 				return self.computePerspective(box, image=None, badOrientationDetected=True)
 		return M
 
-	def correctCardOrientation(self, card):
+	"""
+	Determines if a card is rotated correctly based on the coloring of the pip corners
+	"""
+	def _correctCardOrientation(self, card):
 		pips = [card[:pipX,:pipX], card[-pipX:,-pipX:], card[-pipX:,:pipX], card[:pipX,-pipX:]]
 		vals = map(lambda p:sum(cv2.mean(p)), pips)
 		return (vals[0]+vals[1]-vals[2]-vals[3])<0
 
+	"""
+	Given an input image, extract card candidates and analyze candidates
+	for identity of cards
+	"""
 	def analyzeImageForCards(self, image):
 		candidates = image.extractCardCandidates()
 		cards = self.getTransformedCardCandidates(image, candidates)
 		cards = self.filterCards(cards)
 		for c in cards:
+			"""
+			# optional card sharpening, only affects output appearance
 			cardImage = c.getCard()
 			s,b = 1,5
 			blur = cv2.blur(cardImage, (b,b))
 			sharp = cv2.addWeighted(cardImage, 1+s, blur, -s*.8, 0)
 			c.card = sharp
+			"""
 			
 			names, values = self.comparer.getClosestCards(c, 5)
 			name, value = names[0], values[0]
@@ -159,6 +172,10 @@ class BlackjackPlayer:
 		self.displayCards(cards)
 		self.cards = cards
 
+	"""
+	UNFINISHED
+	Filters out card candidates that are determined to not be cards
+	"""
 	def filterCards(self, cards):
 		for idx,card in reversed(list(enumerate(cards))):
 			#print np.shape(card), self.bigBox, np.average(card, axis=(1))
@@ -166,6 +183,10 @@ class BlackjackPlayer:
 			pass
 		return cards
 
+	"""
+	Takes in a list of card candidates and transforms them to be
+	perfectly rectangular cards
+	"""
 	def getTransformedCardCandidates(self, image, candidates):
 		cards = []
 		y,x,_ = np.shape(image.getInputImage())
@@ -199,7 +220,9 @@ class BlackjackPlayer:
 		# display the cards
 		self.showImage(cardDisplay, "BlackjackCV - Out", 110*c, True)
 
-
+	"""
+	Image capture mode that is only used for saving images
+	"""
 	def runCapture(self):
 		idx = 1
 		while os.path.isfile("images/"+str(idx)+".jpg"):
@@ -216,6 +239,10 @@ class BlackjackPlayer:
 			while os.path.isfile("images/"+str(idx)+".jpg"):
 				idx = idx+1
 
+	"""
+	Runs the Blackjack player. Uses a webcam if one exists.
+	Otherwise, runs algorithm on a series of input images
+	"""
 	def run(self):
 		blurPixels=10
 		blurPixels=(blurPixels,blurPixels)
