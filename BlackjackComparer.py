@@ -37,16 +37,16 @@ class BlackjackComparer:
 		self.pipSuits = {}
 		self.pipValues = {}
 		for s in "DCHS":
-			f = "train/pip/"+s+".jpg"
+			f = "pips/"+s+".jpg"
 			pip = cv2.imread(f)
-			self.pipSuits[s] = cv2.resize(self._trim(pip), pipPartSize)
+			self.pipSuits[s] = self._thresholdCard(cv2.resize(self._trim(pip), pipPartSize))
 			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 			contoursAll = sc.uniformContour(contours)
 			self.shapeContextSuit[s] = sc.shapeContext(contoursAll)
 		for v in "A23456789TJQK":
-			f = "train/pip/"+v+".jpg"
+			f = "pips/"+v+".jpg"
 			pip = cv2.imread(f)
-			self.pipValues[v] = cv2.cvtColor(cv2.resize(self._trim(pip), pipPartSize), cv2.COLOR_BGR2GRAY)
+			self.pipValues[v] = self._thresholdCard(cv2.cvtColor(cv2.resize(self._trim(pip), pipPartSize), cv2.COLOR_BGR2GRAY))
 			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 			contoursAll = sc.uniformContour(contours)
 			self.shapeContextValue[v] = sc.shapeContext(contoursAll)
@@ -104,13 +104,17 @@ class BlackjackComparer:
 
 	def _compare3(self, im1, im2):
 		im3 = cv2.absdiff(im1,im2)
+		score = np.mean(im3)/np.mean(im2)
 		if False:
 			cv2.imshow("1",im1)
 			cv2.imshow("2",im2)
 			cv2.imshow("3",im3)
-			print np.mean(im3)
+			cv2.moveWindow("1", 0,0)
+			cv2.moveWindow("2", 0,150)
+			cv2.moveWindow("3", 0,300)
+			print score
 			cv2.waitKey(0)
-		return np.mean(im3)
+		return score
 
 
 	def computeData(self, im, draw=False):
@@ -183,16 +187,20 @@ class BlackjackComparer:
 			vals = {k:vals[k]*shapeContextVals[k] for k in vals.keys()}
 		"""
 		
-		vals = {v+s:0 for s in "DCHS" for v in"A23456789TJQK"}
+		suitVals = {s:float("inf") for s in "DCHS"}
+		valueVals = {v:float("inf") for v in "A23456789TJQK"}
 		for i in range(2):
 			for s in "DCHS":
 				sScore = self._compare3(card.suits[i], self.pipSuits[s])
-				for v in "A23456789TJQK":
-					vals[v+s] += sScore
+				suitVals[s] = min(suitVals[s], sScore)
+				#for v in "A23456789TJQK":
+					#vals[v+s] += sScore
 			for v in "A23456789TJQK":
 				vScore = self._compare3(card.values[i], self.pipValues[v])
-				for s in "DCHS":
-					vals[v+s] += vScore
+				valueVals[v] = min(valueVals[v], vScore)
+				#for s in "DCHS":
+					#vals[v+s] += vScore
+		vals = {v+s:suitVals[s]+valueVals[v] for s in "DCHS" for v in"A23456789TJQK"}
 		
 		# sort by score and return number of cards requested
 		vals = sorted(vals.items(), key=lambda v:v[1])

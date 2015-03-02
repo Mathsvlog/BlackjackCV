@@ -31,8 +31,9 @@ class BlackjackCard:
 				numCornerTrims += 1
 			# trim outer edges
 			for ax in [0,1]:
-				vals = np.min(np.min(p, axis=2), axis=ax)
+				vals = np.mean(np.min(p, axis=2), axis=ax)
 				valsAvg = np.mean(vals)
+				valsAvg += (np.max(vals)-valsAvg)/4
 				idx1 = max(0,np.argmax(vals<valsAvg))
 				if ax==0:
 					idx2 = idx1+np.argmax(vals[idx1:]>valsAvg)
@@ -47,7 +48,7 @@ class BlackjackCard:
 			# separate suit and value
 			vals = np.min(np.min(p, axis=2), axis=1)
 			valsAvg = np.mean(vals)
-			valsAvg += (np.max(vals)-valsAvg)/2.5
+			valsAvg += (np.max(vals)-valsAvg)/4
 			idx1 = max(0,np.argmax(vals>valsAvg))
 			idx2 = -max(0,np.argmax(vals[-1::-1]>valsAvg))-1
 			size = float(np.shape(vals)[0])
@@ -62,7 +63,6 @@ class BlackjackCard:
 			value = cv2.threshold(value, th, 255, cv2.THRESH_BINARY)[1]
 			th = np.mean(suit)
 			suit = cv2.threshold(suit, th, 255, cv2.THRESH_BINARY)[1]
-			
 			self.values.append(value)
 			self.suits.append(suit)
 
