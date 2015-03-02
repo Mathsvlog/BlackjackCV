@@ -34,18 +34,41 @@ class BlackjackComparer:
 		
 		self.shapeContextSuit = {}
 		self.shapeContextValue = {}
+		self.pipSuits = {}
+		self.pipValues = {}
 		for s in "DCHS":
 			f = "train/pip/"+s+".jpg"
 			pip = cv2.imread(f)
+			self.shapeContextSuit[s] = self._trim(pip)
 			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 			contoursAll = sc.uniformContour(contours)
 			self.shapeContextSuit[s] = sc.shapeContext(contoursAll)
 		for v in "A23456789TJQK":
 			f = "train/pip/"+v+".jpg"
 			pip = cv2.imread(f)
+			self.shapeContextValue[v] = self._trim(pip)
 			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 			contoursAll = sc.uniformContour(contours)
 			self.shapeContextValue[v] = sc.shapeContext(contoursAll)
+
+	def _trim(self, image):
+		trimmed = np.copy(image)
+		for ax in [0,1]:
+			vals = np.min(np.min(trimmed, axis=2), axis=ax)
+			valsAvg = np.mean(vals)
+			idx1 = max(0,np.argmax(vals<valsAvg))
+			if ax==0:
+				idx2 = -np.argmax(vals[::-1]<valsAvg)
+				if abs(idx1-idx2)>5:
+					trimmed = trimmed[:,idx1:idx2]
+			else:
+				idx2 = -np.argmax(vals[::-1]<valsAvg)
+				if idx2==0:
+					idx2 = -1
+				if abs(idx1-idx2)>5:
+					trimmed = trimmed[idx1:idx2,:]
+		return trimmed
+
 
 	def _getCard(self, filename):
 		im = cv2.imread(filename)

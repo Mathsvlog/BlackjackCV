@@ -9,10 +9,62 @@ class BlackjackCard:
 		self.card = image
 		self.pips = [np.copy(image[:pipY,:pipX]), np.copy(image[:-pipY-1:-1,:-pipX-1:-1])]
 		
-		self._adjustPips(image)		
+		#self._adjustPips(image)
 
 		self._computePipContours()
+		self._extractPipParts()
 		self.name = "?"
+
+	# extract the suit and value subimages from the pip images
+	def _extractPipParts(self):
+		doShow = False
+		self.suits = []
+		self.values = []
+
+		for i,p in enumerate(self.pipSharpened):
+			if doShow:
+				cv2.imshow("p1"+str(i), p)
+			# trip dark pixels in corner
+			numCornerTrims = 0
+			while np.max(p[0,0])!=255 and numCornerTrims<3:
+				p = p[1:,1:]
+				numCornerTrims += 1
+			# trim outer edges
+			for ax in [0,1]:
+				vals = np.min(np.min(p, axis=2), axis=ax)
+				valsAvg = np.mean(vals)
+				idx1 = max(0,np.argmax(vals<valsAvg))
+				if ax==0:
+					idx2 = idx1+np.argmax(vals[idx1:]>valsAvg)
+					if abs(idx1-idx2)>5:
+						p = p[:,idx1:idx2]
+				else:
+					idx2 = -np.argmax(vals[::-1]<valsAvg)
+					if idx2==0:
+						idx2 = -1
+					if abs(idx1-idx2)>5:
+						p = p[idx1:idx2,:]
+			# separate suit and value
+			vals = np.min(np.min(p, axis=2), axis=1)
+			valsAvg = np.mean(vals)
+			valsAvg += (np.max(vals)-valsAvg)/2
+			idx = -max(0,np.argmax(vals[-1::-1]>valsAvg))-1
+			suit = p[:idx]
+			value = p[idx:]
+			self.suits.append(suit)
+			self.values.append(value)
+
+			if doShow:
+				cv2.destroyWindow("s"+str(i))
+				cv2.destroyWindow("v"+str(i))
+				cv2.destroyWindow("p"+str(i))
+				cv2.imshow("s"+str(i), suit)
+				cv2.imshow("v"+str(i), value)
+				cv2.imshow("p"+str(i), p)
+		if doShow:
+			cv2.waitKey(0)
+			
+			
 
 	def _adjustPips(self,image):
 		for i in range(2):
@@ -127,3 +179,12 @@ class BlackjackCard:
 
 	def getPips(self):
 		return self.pips
+
+
+if False:
+	folder = "cards/"
+	for s in "DCHS":
+		for v in "A23456789TJQK":
+			name = v+s
+			filename =folder+name+".jpg"
+			card = BlackjackCard(cv2.resize(cv2.imread(filename), cardSize))
