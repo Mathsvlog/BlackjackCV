@@ -17,7 +17,7 @@ class BlackjackCard:
 
 	# extract the suit and value subimages from the pip images
 	def _extractPipParts(self):
-		doShow = False
+		doShow = True
 		self.suits = []
 		self.values = []
 
@@ -47,17 +47,26 @@ class BlackjackCard:
 			# separate suit and value
 			vals = np.min(np.min(p, axis=2), axis=1)
 			valsAvg = np.mean(vals)
-			valsAvg += (np.max(vals)-valsAvg)/2
-			idx = -max(0,np.argmax(vals[-1::-1]>valsAvg))-1
-			suit = p[:idx]
-			value = p[idx:]
-			self.suits.append(suit)
+			valsAvg += (np.max(vals)-valsAvg)/2.5
+			idx1 = max(0,np.argmax(vals>valsAvg))
+			idx2 = -max(0,np.argmax(vals[-1::-1]>valsAvg))-1
+			size = float(np.shape(vals)[0])
+			if idx1/size < .4 or idx1/size > .6:
+				idx1 = int(size*.5)
+			if -idx2/size < .35 or -idx2/size > .45:
+				idx2 = -int(size*.4)
+			value = cv2.cvtColor(cv2.resize(p[:idx1], pipPartSize), cv2.COLOR_BGR2GRAY)
+			suit = cv2.resize(p[idx2:], pipPartSize)
+			
+			th = np.mean(value)
+			value = cv2.threshold(value, th, 255, cv2.THRESH_BINARY)[1]
+			th = np.mean(suit)
+			suit = cv2.threshold(suit, th, 255, cv2.THRESH_BINARY)[1]
+			
 			self.values.append(value)
+			self.suits.append(suit)
 
 			if doShow:
-				cv2.destroyWindow("s"+str(i))
-				cv2.destroyWindow("v"+str(i))
-				cv2.destroyWindow("p"+str(i))
 				cv2.imshow("s"+str(i), suit)
 				cv2.imshow("v"+str(i), value)
 				cv2.imshow("p"+str(i), p)

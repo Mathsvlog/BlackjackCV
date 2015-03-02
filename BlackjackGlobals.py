@@ -9,5 +9,7 @@ imageX,imageY = 640, 480# standard image size
 # pip sharpen amount
 pipSharpen = 2
 
+pipPartSize = (100,100)
+
 fontSize = _cardScale
 fontThick = max(1,int(_cardScale*2))

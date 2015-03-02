@@ -1,4 +1,4 @@
-from BlackjackGlobals import cardSize
+from BlackjackGlobals import cardSize,pipPartSize
 import cv2
 import numpy as np
 from time import time
@@ -39,14 +39,14 @@ class BlackjackComparer:
 		for s in "DCHS":
 			f = "train/pip/"+s+".jpg"
 			pip = cv2.imread(f)
-			self.shapeContextSuit[s] = self._trim(pip)
+			self.pipSuits[s] = cv2.resize(self._trim(pip), pipPartSize)
 			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 			contoursAll = sc.uniformContour(contours)
 			self.shapeContextSuit[s] = sc.shapeContext(contoursAll)
 		for v in "A23456789TJQK":
 			f = "train/pip/"+v+".jpg"
 			pip = cv2.imread(f)
-			self.shapeContextValue[v] = self._trim(pip)
+			self.pipValues[v] = cv2.cvtColor(cv2.resize(self._trim(pip), pipPartSize), cv2.COLOR_BGR2GRAY)
 			contours = cv2.findContours(cv2.Canny(pip, 100, 200), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 			contoursAll = sc.uniformContour(contours)
 			self.shapeContextValue[v] = sc.shapeContext(contoursAll)
@@ -102,8 +102,16 @@ class BlackjackComparer:
 		hMetric = sum(h3.values())/len(h3.values())
 		return tMetric*hMetric
 
-	def _compare3(self, data1, data2):
-		return
+	def _compare3(self, im1, im2):
+		im3 = cv2.absdiff(im1,im2)
+		if False:
+			cv2.imshow("1",im1)
+			cv2.imshow("2",im2)
+			cv2.imshow("3",im3)
+			print np.mean(im3)
+			cv2.waitKey(0)
+		return np.mean(im3)
+
 
 	def computeData(self, im, draw=False):
 		nx,ny = self.gridX, self.gridY
@@ -144,6 +152,7 @@ class BlackjackComparer:
 		return match, vals[match]
 
 	def getClosestCards(self, card, numCards=1):
+		"""
 		image = card.card
 		# create score for each card
 		data1 = self.computeData(image, False)
@@ -157,8 +166,9 @@ class BlackjackComparer:
 		vals2 = {k: self._compare2(data2,self.trainData[k]) for k in self.trainData.keys()}
 		# pick best score for each card
 		vals = {k:min(vals1[k],vals2[k]) for k in vals1.keys()}
-		
+		"""
 		# incorporate shape context
+		"""
 		suit, value = sc.shapeContextFromCard(card)
 		if suit!=None and value!=None:
 			shapeContextVals = {}
@@ -171,6 +181,21 @@ class BlackjackComparer:
 				for s in "DCHS":
 					shapeContextVals[v+s] += vScore
 			vals = {k:vals[k]*shapeContextVals[k] for k in vals.keys()}
+		"""
+		
+		vals = {v+s:0 for s in "DCHS" for v in"A23456789TJQK"}
+		for i in range(2):
+			for s in "DCHS":
+				sScore = self._compare3(card.suits[i], self.pipSuits[s])
+				for v in "A23456789TJQK":
+					vals[v+s] += sScore
+			print
+			for v in "A23456789TJQK":
+				vScore = self._compare3(card.values[i], self.pipValues[v])
+				for s in "DCHS":
+					vals[v+s] += vScore
+			print
+		
 		# sort by score and return number of cards requested
 		vals = sorted(vals.items(), key=lambda v:v[1])
 		return zip(*vals[:numCards])
