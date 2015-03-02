@@ -176,8 +176,9 @@ class BlackjackPlayer:
 			centerX,centerY = reduce(lambda a,b:(a[0]+b[0], a[1]+b[1]), cand)
 			centerX,centerY = centerX/4., centerY/4.
 			percX, percY = (x-centerX)/x, (y-centerY)/y
-			order[BlackjackCard(card)] = -int(percY*3)-percX
-			cards.append(BlackjackCard(card))
+			cardFinal = BlackjackCard(card)
+			order[cardFinal] = -int(percY*3)-percX
+			cards.append(cardFinal)
 		
 		cardsSorted = sorted(order.items(), key=operator.itemgetter(1))# TODO lambda instead
 		cardsSorted = [c[0] for c in cardsSorted]

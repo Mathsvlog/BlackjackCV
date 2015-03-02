@@ -189,12 +189,10 @@ class BlackjackComparer:
 				sScore = self._compare3(card.suits[i], self.pipSuits[s])
 				for v in "A23456789TJQK":
 					vals[v+s] += sScore
-			print
 			for v in "A23456789TJQK":
 				vScore = self._compare3(card.values[i], self.pipValues[v])
 				for s in "DCHS":
 					vals[v+s] += vScore
-			print
 		
 		# sort by score and return number of cards requested
 		vals = sorted(vals.items(), key=lambda v:v[1])

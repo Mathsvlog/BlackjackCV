@@ -17,7 +17,7 @@ class BlackjackCard:
 
 	# extract the suit and value subimages from the pip images
 	def _extractPipParts(self):
-		doShow = True
+		doShow = False
 		self.suits = []
 		self.values = []
 
@@ -73,8 +73,6 @@ class BlackjackCard:
 		if doShow:
 			cv2.waitKey(0)
 			
-			
-
 	def _adjustPips(self,image):
 		for i in range(2):
 			p = self.pips[i]
@@ -136,16 +134,12 @@ class BlackjackCard:
 		x,y = cardX*i, (cardY+pipY)*j
 		display[y:y+cardY,x:x+cardX] = self.card
 		y += cardY
-		for pip,pipContour in zip(self.pips,self.pipThresholded):
+		for i in range(2):
+			pip, suit, value = self.pips[i], self.suits[i], self.values[i]
 			display[y:y+pipY,x:x+pipX] = pip
-			display[y:y+pipY,x+pipX:x+pipX*2] = pipContour
-			"""
-			pipBlur = cv2.blur(pip, pipSize)
-			pip = cv2.addWeighted(pip, 1+pipSharpen, pipBlur, -pipSharpen, 0)
-			#canny = cv2.Canny(pip, 100, 400)
-			canny = cv2.cvtColor(cv2.Canny(pip, 100, 400), cv2.COLOR_GRAY2BGR)
-			display[y:y+pipY,x+pipX:x+pipX*2] = canny
-			"""
+			dy = pipY/2
+			display[y:y+pipY-dy-1,x+pipX:x+pipX*2] = cv2.cvtColor(cv2.resize(value, (pipX, dy)), cv2.COLOR_GRAY2BGR)
+			display[y+dy+1:y+pipY,x+pipX:x+pipX*2] = cv2.resize(suit, (pipX, dy))
 			x += pipX*2
 		cv2.putText(display, self.name, (x,y+pipY/2), cv2.FONT_HERSHEY_SIMPLEX, fontSize, (255,255,255), thickness=fontThick)
 		
