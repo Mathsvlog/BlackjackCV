@@ -32,7 +32,28 @@ class BlackjackImage:
 			if not BlackjackImage._projectionTransform is None:
 				self._applyProjectionTransform()
 
+		#self.imageOut = self._darkenImage(self.image, .5, 0)
 
+	"""
+	Finds pixels that have a darker color than most of the image and darkens them further
+	thresholdFactor in range 0 to 1, 0 uses average as threshold, 1 uses 255 as threshold
+	darkenFactor is multiplied by the rgb values of dark pixels
+	"""
+	def _darkenImage(self, image, thresholdFactor, darkenFactor):
+		image = np.copy(image)
+		grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+		mean = np.mean(grey)
+		mean = mean + (255-mean)*thresholdFactor
+		if darkenFactor>0:
+			image[grey<mean] /= darkenFactor
+		else:
+			image[grey<mean] = 0
+		return image
+
+	"""
+	Computes a perspective transform matrix to make cards perfectly rectangular and uniform size.
+	Uses a card candidate from the image to compute the transform
+	"""
 	def _computeProjectionTransform(self):
 		newImage = np.copy(self.image)
 		candidates = self.extractCardCandidates()
@@ -89,6 +110,7 @@ class BlackjackImage:
 		self.imageOut = np.copy(rotated)
 		self.image = np.copy(rotated)
 		self.imageGrey = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
+		
 
 	def getInputImage(self):
 		return self.image
