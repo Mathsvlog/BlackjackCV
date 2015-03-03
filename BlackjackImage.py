@@ -1,5 +1,5 @@
 import cv2
-from math import cos,sin,pi,acos
+from math import cos,sin,pi,acos,atan2
 import numpy as np
 import PointFunctions as pf
 from BlackjackGlobals import *
@@ -46,25 +46,35 @@ class BlackjackImage:
 		candidateDists = map(lambda c:pf.dist(center, pf.avg(c)), candidates)
 		card = candidates[np.argmin(candidateDists)]
 
+
+		# reverse order if conunterclockwise
+		if pf.ccw(card[0],card[1],card[2]):
+			card[0],card[2] = card[2],card[0]
+
 		# (idx-1, idx) forms the shortest edge
 		idx = np.argmin(map(lambda i:pf.dist(card[i-1],card[i]), range(4)))
 		box = card[:][:]
 
 		# create square box
-		#box[idx] = pf.rounded(pf.lerp(box[idx-1], box[idx], .85))# TODO how to get value
 		for i,j in [(idx, idx-3), (idx-1, idx-2)]:
 			box[j] = pf.rounded(pf.lerp(box[i], pf.add(box[i],pf.norm(box[idx],box[idx-1])), 1.4))
 
-		box = map(lambda b:(b[0],b[1]+30),box)
-
+		# compute initial projection matrix
 		M = cv2.getPerspectiveTransform(np.matrix(card,np.float32), np.matrix(box,np.float32))
-		# fix top left corner
-		M[0:2,2] = 0
-		# fix top right corner
-		vec = np.transpose(np.matrix([size[0], 0, 1]))
-		proj = M*vec
-		scale = size[0]/proj[0,0]
-		M = M*np.matrix([[scale,0,0],[0,scale, 0],[0,0,1]])
+		# translate to fix top left corner
+		x,y = -M[0,2], -M[1,2]
+		M = np.matrix([[1, 0,x],[0, 1,y],[0,0,1]])*M
+		# rotate so top of image aligns
+		corner = np.transpose(np.matrix([size[1], 0, 1]))
+		p = M*corner
+		angle = -atan2(p[1,0],p[0,0])
+		M = np.matrix([[cos(angle), -sin(angle),0],[sin(angle), cos(angle),0],[0,0,1]])*M
+		# scale to fix top right corner
+		p = M*corner
+		scale = size[1]*p[2,0]/p[0,0]
+		M = np.matrix([[scale,0,0],[0,scale, 0],[0,0,1]])*M
+
+		# set final matrix
 		BlackjackImage._projectionTransform = M
 
 	def _applyProjectionTransform(self):

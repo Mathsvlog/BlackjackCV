@@ -259,11 +259,11 @@ class BlackjackPlayer:
 		if not self.hasWebcam:
 			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
 			#for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
-			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,22)):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,23)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
-				image = BlackjackImage(frame2, project=self.project)
+				image = BlackjackImage(frame2, project=self.project, recomputeProjection=False)
 				self.analyzeImageForCards(image)
 				self.showImage(image)
 				print filename
