@@ -1,25 +1,78 @@
 import cv2
 from math import cos,sin,pi,acos
 import numpy as np
-import PointFunctions as pt
+import PointFunctions as pf
 from BlackjackGlobals import *
 
 class BlackjackImage:
+	_projectionTransform = None
 
 	"""
 	Class for an input image to analyze for playing cards
 	"""
-	def __init__(self, image, drawImageOut=True):
+	def __init__(self, image, drawImageOut=True, project=False, recomputeProjection=False):
 		self.image = image
-		self.imageGrey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-		self.drawOut = drawImageOut
-		if drawImageOut:
-			self.imageOut = np.copy(image)
+		
+		# 1D numpy array to tuple
+		self.toPoints = lambda points:map(lambda p:tuple(p[0]), points)
 		# centroid approximation
 		epsilon = lambda c:0.07*cv2.arcLength(c, True)
 		self.approx = lambda c:cv2.approxPolyDP(c, epsilon(c), True)
-		# 1D numpy array to tuple
-		self.toPoints = lambda points:map(lambda p:tuple(p[0]), points)
+		self.drawOut = drawImageOut
+
+			
+		self.imageGrey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+		if drawImageOut:
+			self.imageOut = np.copy(image)
+
+		# Perform a perspective transformation
+		if project:
+			if recomputeProjection or BlackjackImage._projectionTransform is None:
+				self._computeProjectionTransform()
+			if not BlackjackImage._projectionTransform is None:
+				self._applyProjectionTransform()
+
+
+	def _computeProjectionTransform(self):
+		newImage = np.copy(self.image)
+		candidates = self.extractCardCandidates()
+		# Can't compute projection matrix if there are no candidates
+		if len(candidates)==0:
+			return
+
+		# pick candidate closest to center
+		size = np.shape(self.image)[:2]
+		center = map(lambda x:x/2,size)
+		candidateDists = map(lambda c:pf.dist(center, pf.avg(c)), candidates)
+		card = candidates[np.argmin(candidateDists)]
+
+		# (idx-1, idx) forms the shortest edge
+		idx = np.argmin(map(lambda i:pf.dist(card[i-1],card[i]), range(4)))
+		box = card[:][:]
+
+		# create square box
+		#box[idx] = pf.rounded(pf.lerp(box[idx-1], box[idx], .85))# TODO how to get value
+		for i,j in [(idx, idx-3), (idx-1, idx-2)]:
+			box[j] = pf.rounded(pf.lerp(box[i], pf.add(box[i],pf.norm(box[idx],box[idx-1])), 1.4))
+
+		box = map(lambda b:(b[0],b[1]+30),box)
+
+		M = cv2.getPerspectiveTransform(np.matrix(card,np.float32), np.matrix(box,np.float32))
+		# fix top left corner
+		M[0:2,2] = 0
+		# fix top right corner
+		vec = np.transpose(np.matrix([size[0], 0, 1]))
+		proj = M*vec
+		scale = size[0]/proj[0,0]
+		M = M*np.matrix([[scale,0,0],[0,scale, 0],[0,0,1]])
+		BlackjackImage._projectionTransform = M
+
+	def _applyProjectionTransform(self):
+		# project original image
+		rotated = cv2.warpPerspective(self.image, BlackjackImage._projectionTransform, (640,480))
+		self.imageOut = np.copy(rotated)
+		self.image = np.copy(rotated)
+		self.imageGrey = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
 
 	def getInputImage(self):
 		return self.image
@@ -107,7 +160,7 @@ class BlackjackImage:
 				closestDist = float("inf")
 				closest = None
 				for corner in cornerList:
-					currDist = pt.dist(corner,point)
+					currDist = pf.dist(corner,point)
 					if currDist < closestDist:
 						closestDist = currDist
 						closest = corner

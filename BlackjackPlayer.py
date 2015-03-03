@@ -7,6 +7,7 @@ from BlackjackComparer import BlackjackComparer
 import PointFunctions as pt
 from BlackjackGlobals import *
 import operator
+import PointFunctions as pf
 from time import sleep
 
 class BlackjackPlayer:
@@ -30,7 +31,10 @@ class BlackjackPlayer:
 			self.hasWebcam, frame = self.webcam.read()
 			if self.hasWebcam:
 				print self.webcam.get(self.camAtt)
-			
+		
+		self.project = not self.hasWebcam
+		self.reproject = False
+
 		if doRun:
 			self.run()
 
@@ -67,11 +71,15 @@ class BlackjackPlayer:
 					value = self.webcam.get(self.camAtt) - self.camAttD
 					self.webcam.set(self.camAtt, 0)
 					print value, self.webcam.get(self.camAtt)
+				elif key==32:# SPACE
+					self.project = True
+					self.reproject = True
 			# without webcam, show image until keypress
 			else:
 				key = cv2.waitKey(0) & 0xFF
 				if key == 27:
 					sys.exit()
+			
 
 	"""
 	rect = ((centerX,centerY),(width,height),(angle))
@@ -255,7 +263,7 @@ class BlackjackPlayer:
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
-				image = BlackjackImage(frame2)
+				image = BlackjackImage(frame2, project=self.project)
 				self.analyzeImageForCards(image)
 				self.showImage(image)
 				print filename
@@ -268,7 +276,8 @@ class BlackjackPlayer:
 				#frame2 = cv2.addWeighted(frame, 1.5, blur, -0.5, 0)
 				#frame2 = cv2.addWeighted(frame, 1+amount, blur, -amount, 0)
 				#analyzeImageForCards2(frame2)
-				image = BlackjackImage(frame)
+				image = BlackjackImage(frame, project=self.project, recomputeProjection=self.reproject)
+				self.reproject = False
 				self.analyzeImageForCards(image)
 				#image = cv2.Canny(image.getInputImage(), 100, 200)
 				self.showImage(image)

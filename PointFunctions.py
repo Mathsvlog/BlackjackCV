@@ -17,3 +17,9 @@ ccw = lambda a,b,z:dot(norm(a,b),vec(b,z))>0
 theta = lambda a,b:atan2(b[1]-a[1],b[0]-a[0])
 # linear interpolation between ab
 lerp = lambda a,b,t:[a[0]*(1-t)+b[0]*t, a[1]*(1-t)+b[1]*t]
+# rounds numbers in a vector to nearest integer
+rounded = lambda p:map(lambda i:int(round(i)), p)
+# sum of ab
+add = lambda a,b:[a[0]+b[0],a[1]+b[1]]
+
+avg = lambda pts: map(lambda x:sum(x)/len(pts),zip(*pts))
