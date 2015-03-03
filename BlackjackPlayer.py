@@ -31,8 +31,8 @@ class BlackjackPlayer:
 			if self.camAttI>=0:
 				self.webcam.set(self.camAtt, self.camAttI)
 			self.hasWebcam, frame = self.webcam.read()
-			if self.hasWebcam:
-				print self.webcam.get(self.camAtt)
+			#if self.hasWebcam:
+				#print self.webcam.get(self.camAtt)
 		
 		self.project = not self.hasWebcam
 		self.reproject = False
@@ -269,7 +269,7 @@ class BlackjackPlayer:
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
-				image = BlackjackImage(frame2, project=self.project, recomputeProjection=False)
+				image = BlackjackImage(frame2, project=self.project, recomputeProjection=True)
 				self.analyzeImageForCards(image)
 				self.showImage(image)
 				print filename

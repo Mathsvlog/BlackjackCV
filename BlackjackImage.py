@@ -61,19 +61,25 @@ class BlackjackImage:
 
 		# compute initial projection matrix
 		M = cv2.getPerspectiveTransform(np.matrix(card,np.float32), np.matrix(box,np.float32))
+		
 		# translate to fix top left corner
 		x,y = -M[0,2], -M[1,2]
 		M = np.matrix([[1, 0,x],[0, 1,y],[0,0,1]])*M
 		# rotate so top of image aligns
-		corner = np.transpose(np.matrix([size[1], 0, 1]))
-		p = M*corner
+		corners = [np.transpose(np.matrix([size[1], 0, 1])), np.transpose(np.matrix([size[1], size[0], 1]))]
+		p = M*corners[0]
 		angle = -atan2(p[1,0],p[0,0])
 		M = np.matrix([[cos(angle), -sin(angle),0],[sin(angle), cos(angle),0],[0,0,1]])*M
-		# scale to fix top right corner
-		p = M*corner
-		scale = size[1]*p[2,0]/p[0,0]
+		# fix rotation to the z axis
+		M[1,0] = 0
+		M[2,0] = 0
+		# scale to fix corners
+		scale = float("inf")
+		for i,j in [[0,1],[1,0]]:
+			p = M*corners[i]
+			scale = min(scale, size[j]*p[2,0]/p[i,0])
 		M = np.matrix([[scale,0,0],[0,scale, 0],[0,0,1]])*M
-
+		#print "\n".join(map(lambda m:str(m),M.tolist()))
 		# set final matrix
 		BlackjackImage._projectionTransform = M
 
