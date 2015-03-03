@@ -12,6 +12,8 @@ from time import sleep
 
 class BlackjackPlayer:
 
+	printCards = False
+
 	"""
 	Main class for playing Blackjack using a webcam or with input images
 	"""
@@ -71,6 +73,9 @@ class BlackjackPlayer:
 					value = self.webcam.get(self.camAtt) - self.camAttD
 					self.webcam.set(self.camAtt, 0)
 					print value, self.webcam.get(self.camAtt)
+				elif key == ord('p'):
+					BlackjackImage._projectionTransform = None
+					self.project = False
 				elif key==32:# SPACE
 					self.project = True
 					self.reproject = True
@@ -174,7 +179,8 @@ class BlackjackPlayer:
 			
 			names, values = self.comparer.getClosestCards(c, 5)
 			name, value = names[0], values[0]
-			print name, value, names
+			if BlackjackPlayer.printCards:
+				print name, value, names
 			certainty = str(int(log(value, .15)))
 			c.setCardName(name+"_"+certainty)
 		self.displayCards(cards)
