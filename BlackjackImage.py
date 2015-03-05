@@ -6,6 +6,7 @@ from BlackjackGlobals import *
 
 class BlackjackImage:
 	_projectionTransform = None
+	_projectedCardSize = None
 
 	"""
 	Class for an input image to analyze for playing cards
@@ -103,6 +104,13 @@ class BlackjackImage:
 		#print "\n".join(map(lambda m:str(m),M.tolist()))
 		# set final matrix
 		BlackjackImage._projectionTransform = M
+		pts = map(lambda c:zip(*(c/c[2]).tolist()[:2]), map(lambda c:M*np.matrix([[c[0]],[c[1]],[1]]), card))
+		print card
+		print pts
+		for i in range(4):
+			for j in range(i):
+				print pf.dist(pts[i][0],pts[j][0])
+		#BlackjackImage._projectedCardSize
 
 	def _applyProjectionTransform(self):
 		# project original image
