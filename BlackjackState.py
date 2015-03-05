@@ -9,15 +9,18 @@ class CardGroup:
 		self.isDealer = False
 		self.isValid = len(cards)>1
 		self._computeScore()
-		self.choice = "I"
+		self.move = "I"
 
 	def __repr__(self):
 		g = "D" if self.isDealer else "P"
 		g += "("+",".join(self.values)+")"
 		g += "="+self.scoreKey
 		if not self.isDealer:
-			g += ":"+self.choice
+			g += ":"+self.move
 		return g
+
+	def __eq__(self, other):
+		return set(self.cards) == set(other.cards) and self.isDealer==other.isDealer 
 
 	def _computeScore(self):
 		values = map(lambda c:c.name[0], self.cards)
@@ -44,17 +47,17 @@ class CardGroup:
 		if len(self.values)==1:
 			self.scoreKey = str(cardValueMap[self.values[0]])
 
-	def computeChoice(self, dealer):
+	def computeMove(self, dealer):
 		if len(dealer.cards)>1:
-			self.choice = "W"# wait
+			self.move = "W"# wait
 		elif self.score>21:
-			self.choice = "B"# bust
+			self.move = "B"# bust
 		else:
 			key = (self.scoreKey, dealer.scoreKey)
 			if key in basicStrategy:
-				self.choice = basicStrategy[key]
+				self.move = basicStrategy[key]
 			else:
-				self.choice = "I"# invalid, should not happen
+				self.move = "I"# invalid, should not happen
 
 class BlackjackState:
 	
@@ -66,6 +69,20 @@ class BlackjackState:
 		self.isValid = self._isStateValid(cards)
 		if not self.groups is None:
 			print self.groups
+
+	def __eq__(self, other):
+		if other==None:
+			return False
+		if (self.groups is None) == (other.groups is None):
+			if self.groups==None:
+				return False# TODO, is this correct
+			if  (len(self.groups) != len(other.groups)):
+				return False
+			for i in range(len(self.groups)):
+				if self.groups[i] != outher.groups[i]:
+					return False
+		return True
+
 
 	def _isStateValid(self, cards):
 		self.groups = None
@@ -87,7 +104,7 @@ class BlackjackState:
 
 		for group in groups:
 			if not group.isDealer:
-				if group.computeChoice(self.dealer)=="I":
+				if group.computeMove(self.dealer)=="I":
 					print "FOUND INVALID STATE", self.group, self.dealer
 					return False
 
@@ -128,15 +145,16 @@ class BlackjackState:
 	def _identifyDealer(self, groups):
 		counts = map(lambda g:len(g.cards), groups)
 		if counts.count(1) == 1:
-			self.dealer = groups[counts.index(1)]
+			self.dealerPos = counts.index(1)
 		# identify dealer by distance
 		elif not self.dealerPos is None:
 			dealerDists = map(lambda g:pf.dist(self.dealerPos, g.center), groups)
 			if min(dealerDists)>BlackjackState.minGroupDist:
 				return False
-			self.dealer = groups[dealerDists.index(min(dealerDists))]
+			self.dealerPos = groups[dealerDists.index(min(dealerDists))]
 		else:
 			return False
+		self.dealer = groups[self.dealerPos]
 		self.dealer.setDealer()
 		self.dealerPos = self.dealer.center
 		return True

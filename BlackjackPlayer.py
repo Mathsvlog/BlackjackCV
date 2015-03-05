@@ -10,6 +10,7 @@ import operator
 import PointFunctions as pf
 from time import sleep
 from BlackjackState import BlackjackState
+from BlackjackSpeaker import BlackjackSpeaker
 
 class BlackjackPlayer:
 
@@ -38,6 +39,7 @@ class BlackjackPlayer:
 		
 		self.project = not self.hasWebcam
 		self.reproject = False
+		self.speaker = BlackjackSpeaker()
 
 		if doRun:
 			self.run()
@@ -188,6 +190,8 @@ class BlackjackPlayer:
 		self.displayCards(cards)
 		self.cards = cards
 		self.currState = BlackjackState(cards)
+		if self.hasWebcam:
+			self.speaker.analyzeState(self.currState)
 
 	"""
 	UNFINISHED
