@@ -7,12 +7,14 @@ from BlackjackGlobals import *
 class BlackjackImage:
 	_projectionTransform = None
 	_projectedCardSize = None
+	# tolerance of at least 6
 
 	"""
 	Class for an input image to analyze for playing cards
 	"""
 	def __init__(self, image, drawImageOut=True, project=False, recomputeProjection=False):
 		self.image = image
+		self.isProjected = False
 		
 		# 1D numpy array to tuple
 		self.toPoints = lambda points:map(lambda p:tuple(p[0]), points)
@@ -20,11 +22,7 @@ class BlackjackImage:
 		epsilon = lambda c:0.07*cv2.arcLength(c, True)
 		self.approx = lambda c:cv2.approxPolyDP(c, epsilon(c), True)
 		self.drawOut = drawImageOut
-
-			
-		self.imageGrey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-		if drawImageOut:
-			self.imageOut = np.copy(image)
+		self._createImageVariants()
 
 		# Perform a perspective transformation
 		if project:
@@ -33,7 +31,8 @@ class BlackjackImage:
 			if not BlackjackImage._projectionTransform is None:
 				self._applyProjectionTransform()
 
-		#self.imageOut = self._darkenImage(self.image, .5, 0)
+		self.isProjected = project
+
 
 	"""
 	Finds pixels that have a darker color than most of the image and darkens them further
@@ -104,21 +103,25 @@ class BlackjackImage:
 		#print "\n".join(map(lambda m:str(m),M.tolist()))
 		# set final matrix
 		BlackjackImage._projectionTransform = M
+		# compute card lengths in projected image
 		pts = map(lambda c:zip(*(c/c[2]).tolist()[:2]), map(lambda c:M*np.matrix([[c[0]],[c[1]],[1]]), card))
-		print card
-		print pts
-		for i in range(4):
-			for j in range(i):
-				print pf.dist(pts[i][0],pts[j][0])
-		#BlackjackImage._projectedCardSize
+		cardLengths = map(lambda i:pf.dist(pts[0][0],pts[i][0]), range(1,4))
+		cardLengths.sort()
+		BlackjackImage._projectedCardSize = tuple(map(lambda l:int(round(l)), cardLengths))
+		print BlackjackImage._projectedCardSize
 
 	def _applyProjectionTransform(self):
 		# project original image
 		rotated = cv2.warpPerspective(self.image, BlackjackImage._projectionTransform, (640,480))
-		self.imageOut = np.copy(rotated)
 		self.image = np.copy(rotated)
-		self.imageGrey = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
-		
+		self._createImageVariants()
+	
+	def _createImageVariants(self):
+		if self.drawOut:
+			self.imageOut = np.copy(self.image)
+		self.imageDark = self._darkenImage(self.image, .5, 0)# darken
+		self.imageGrey = cv2.cvtColor(self.imageDark, cv2.COLOR_BGR2GRAY)
+
 
 	def getInputImage(self):
 		return self.image
@@ -142,7 +145,12 @@ class BlackjackImage:
 	def extractHarisCorners(self):
 		#imValues = cv2.cornerHarris(self.imageGrey, 5, 3, 0.04)
 		#imValues = cv2.cornerHarris(self.imageGrey, 5, 9, 0.04)
-		imValues = cv2.cornerHarris(self.imageGrey, 8, 9, 0.04)
+		if self.isProjected:
+			cv2.imshow("grey", self.imageGrey)
+			block = min(BlackjackImage._projectedCardSize)/6
+			imValues = cv2.cornerHarris(self.imageGrey, block, 9, 0.04)
+		else:
+			imValues = cv2.cornerHarris(self.imageGrey, 8, 9, 0.04)
 		ret, imCorners = cv2.threshold(imValues, 0.04*imValues.max(), 255, 0)
 		imCorners = np.uint8(imCorners)
 		_, _, _, centroids = cv2.connectedComponentsWithStats(imCorners)
@@ -167,7 +175,7 @@ class BlackjackImage:
 	Returns a list of contours using Canny edge detection
 	"""
 	def extractCannyContours(self):
-		canny = cv2.Canny(self.image, 100, 200)
+		canny = cv2.Canny(self.imageDark, 100, 200)
 		_, contours, _ = cv2.findContours(canny, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		return contours
 
@@ -186,12 +194,51 @@ class BlackjackImage:
 	Uses edges and corners to find potenial cards in the image
 	"""
 	def extractCardCandidates(self):
+		# find contours
 		contours = self.extractCannyContours()
 		contourApprox = map(lambda c:self.approx(c), contours)
 		self.drawContours(contours, (255,255,0))
+
+		# whiten contours before finding harris corners
+		if self.isProjected:
+			for c in contours:
+				cv2.drawContours(self.imageGrey, [c], 0, (255,255,255), -1)
+				cv2.drawContours(self.imageDark, [c], 0, (255,255,255), -1)
+			contours = self.extractCannyContours()
+			contourApprox = map(lambda c:self.approx(c), contours)
+
+
+		# find corners
 		corners = self.extractHarisCorners()
 		cornerList = map(lambda c:tuple(c),list(corners))
 
+		if self.isProjected:
+			cardCandidates = self._extractCardCandidatesHelper2(contours, contourApprox, cornerList)
+		else:
+			cardCandidates = self._extractCardCandidatesHelper1(contours, contourApprox, cornerList)
+
+		self.drawCorners(corners)
+		if self.isProjected:
+			for pts in cardCandidates:
+				cardLengths = map(lambda i:pf.dist(pts[0],pts[i]), range(1,4))
+				cardLengths.sort()
+				errors = map(lambda i:abs(cardLengths[i]-BlackjackImage._projectedCardSize[i]), range(3))
+				#print max(errors)
+		return cardCandidates
+
+	def _extractCardCandidatesHelper2(self, contours, contourApprox, cornerList):
+		#result1 = self._extractCardCandidatesHelper1(contours, contourApprox, cornerList)# DEL
+		
+		# HERE: match corners by distance
+		idx = 5
+		cv2.circle(self.imageOut, tuple(map(lambda i:int(i),cornerList[idx])), 10, (0,255,0), -1)#
+		dists = map(lambda i:pf.dist(cornerList[idx], cornerList[i]), range(len(cornerList)))
+		dists.sort()
+		print dists
+
+		return []
+
+	def _extractCardCandidatesHelper1(self, contours, contourApprox, cornerList):
 		condition = lambda i:len(contourApprox[i])==4 and 800<cv2.contourArea(contours[i])
 		cardCandidates = []
 		for idx in filter(condition, range(len(contours))):
@@ -223,6 +270,4 @@ class BlackjackImage:
 
 			else:
 				prevCornerList = cornerList[:]
-
-		self.drawCorners(corners)
 		return cardCandidates
