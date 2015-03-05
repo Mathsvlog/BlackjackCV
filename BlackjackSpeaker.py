@@ -5,7 +5,7 @@ from threading import Thread
 class BlackjackSpeaker:
 
 	repeatsRequired = 5
-	phrases = {"H": "hit me", "S":"stand", "P":"split the cards", "D":"double down"}
+	phrases = {"H": "hit me", "S":"stand", "P":"split the cards", "D":"double down", "B":"i bust"}
 
 	def __init__(self):
 		self.engine = pyttsx.init()

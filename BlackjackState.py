@@ -73,16 +73,7 @@ class BlackjackState:
 	def __eq__(self, other):
 		if other==None:
 			return False
-		if (self.groups is None) == (other.groups is None):
-			if self.groups==None:
-				return False# TODO, is this correct
-			if  (len(self.groups) != len(other.groups)):
-				return False
-			for i in range(len(self.groups)):
-				if self.groups[i] != outher.groups[i]:
-					return False
-		return True
-
+		return str(self.groups)==str(other.groups)
 
 	def _isStateValid(self, cards):
 		self.groups = None
