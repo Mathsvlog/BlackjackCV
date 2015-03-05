@@ -106,7 +106,7 @@ class BlackjackComparer:
 				c = cv2.imread("train/original/"+name)
 				c = cv2.resize(c, cardSize)
 				c = cv2.blur(c, (5,5))
-				card = BlackjackCard(c)
+				card = BlackjackCard(c, (0,0))
 				cv2.imshow("", card.getCard())
 				cv2.waitKey(0)
 

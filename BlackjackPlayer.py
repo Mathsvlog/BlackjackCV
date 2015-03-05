@@ -9,10 +9,12 @@ from BlackjackGlobals import *
 import operator
 import PointFunctions as pf
 from time import sleep
+from BlackjackState import BlackjackState
 
 class BlackjackPlayer:
 
 	printCards = False
+	sharpenCardOutput = False
 
 	"""
 	Main class for playing Blackjack using a webcam or with input images
@@ -168,23 +170,24 @@ class BlackjackPlayer:
 		cards = self.getTransformedCardCandidates(image, candidates)
 		cards = self.filterCards(cards)
 		for c in cards:
-			"""
 			# optional card sharpening, only affects output appearance
-			cardImage = c.getCard()
-			s,b = 1,5
-			blur = cv2.blur(cardImage, (b,b))
-			sharp = cv2.addWeighted(cardImage, 1+s, blur, -s*.8, 0)
-			c.card = sharp
-			"""
-			
+			if BlackjackPlayer.sharpenCardOutput:
+				cardImage = c.getCard()
+				s,b = 1,5
+				blur = cv2.blur(cardImage, (b,b))
+				sharp = cv2.addWeighted(cardImage, 1+s, blur, -s*.8, 0)
+				c.card = sharp
+			# get closest card and set the card's name as suit+value letters
 			names, values = self.comparer.getClosestCards(c, 5)
 			name, value = names[0], values[0]
-			if BlackjackPlayer.printCards:
-				print name, value, names
 			certainty = str(int(log(value, .15)))
 			c.setCardName(name+"_"+certainty)
+
+			if BlackjackPlayer.printCards:
+				print name, value, names, c.center
 		self.displayCards(cards)
 		self.cards = cards
+		self.currState = BlackjackState(cards)
 
 	"""
 	UNFINISHED
@@ -211,13 +214,13 @@ class BlackjackPlayer:
 			centerX,centerY = reduce(lambda a,b:(a[0]+b[0], a[1]+b[1]), cand)
 			centerX,centerY = centerX/4., centerY/4.
 			percX, percY = (x-centerX)/x, (y-centerY)/y
-			cardFinal = BlackjackCard(card)
+			cardFinal = BlackjackCard(card, (centerX, centerY))
 			order[cardFinal] = -int(percY*3)-percX
 			cards.append(cardFinal)
 		
 		cardsSorted = sorted(order.items(), key=operator.itemgetter(1))# TODO lambda instead
 		cardsSorted = [c[0] for c in cardsSorted]
-		return cardsSorted
+		return cards
 
 	"""
 	Extract cards and display them in the output window
@@ -265,7 +268,7 @@ class BlackjackPlayer:
 		if not self.hasWebcam:
 			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
 			#for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
-			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,23)):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,24)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)

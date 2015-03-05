@@ -8,12 +8,16 @@ class BlackjackCard:
 	Class for an image of a playing card.
 	Automatically extracts suit and value from pip corners
 	"""
-	def __init__(self, image):
+	def __init__(self, image, center):
 		self.card = image
 		self.pips = [np.copy(image[:pipY,:pipX]), np.copy(image[:-pipY-1:-1,:-pipX-1:-1])]
 		self._computePipSharpened()
 		self._extractPipParts()
 		self.name = "?"
+		self.center = center
+
+	def __repr__(self):
+		return self.name
 
 	"""
 	Extract the suit and value subimages from the pip images
