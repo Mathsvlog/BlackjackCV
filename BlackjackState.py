@@ -14,7 +14,7 @@ class CardGroup:
 	def __repr__(self):
 		g = "D" if self.isDealer else "P"
 		g += "("+",".join(self.values)+")"
-		g += "="+str(self.score)
+		g += "="+self.scoreKey
 		if not self.isDealer:
 			g += ":"+self.choice
 		return g
@@ -41,27 +41,31 @@ class CardGroup:
 	def setDealer(self):
 		self.isDealer = True
 		self.isValid = True
+		if len(self.values)==1:
+			self.scoreKey = str(cardValueMap[self.values[0]])
 
 	def computeChoice(self, dealer):
 		if len(dealer.cards)>1:
 			self.choice = "W"# wait
-			return
-		key = (self.scoreKey, dealer.scoreKey)
-		print key, key in basicStrategy
-		if key in basicStrategy:
-			self.choice = basicStrategy[key]
+		elif self.score>21:
+			self.choice = "B"# bust
 		else:
-			self.choice = "I"# invalid, should not happen
+			key = (self.scoreKey, dealer.scoreKey)
+			if key in basicStrategy:
+				self.choice = basicStrategy[key]
+			else:
+				self.choice = "I"# invalid, should not happen
 
 class BlackjackState:
 	
-	minGroupDist = max(imageX,imageY)/6
+	minGroupDist = max(imageX,imageY)/4
 
 
 	def __init__(self, cards, dealerPos=None):
 		self.dealerPos = dealerPos
 		self.isValid = self._isStateValid(cards)
-		print self.groups
+		if not self.groups is None:
+			print self.groups
 
 	def _isStateValid(self, cards):
 		self.groups = None

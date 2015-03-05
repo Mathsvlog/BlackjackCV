@@ -291,4 +291,4 @@ class BlackjackPlayer:
 				#image = cv2.Canny(image.getInputImage(), 100, 200)
 				self.showImage(image)
 
-b = BlackjackPlayer(ignoreWebcam=True)
+b = BlackjackPlayer()
