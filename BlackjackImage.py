@@ -8,6 +8,7 @@ import itertools
 class BlackjackImage:
 	_projectionTransform = None
 	_projectedCardSize = None
+	_cardSizeTolerance = 7
 	# tolerance of at least 6
 
 	"""
@@ -220,7 +221,6 @@ class BlackjackImage:
 				self.drawCorners(c, (255,0,0))
 		else:
 			cardCandidates = self._extractCardCandidatesHelper1(contours, contourApprox, cornerList)
-
 		
 		if self.isProjected:
 			for pts in cardCandidates:
@@ -231,7 +231,7 @@ class BlackjackImage:
 		return cardCandidates
 
 	def _extractCardCandidatesHelper2(self, contours, contourApprox, cornerList):
-		corners = cornerList[4:][:]
+		corners = cornerList[:][:]
 		candidates = []
 		# match first corner in list until list is depleted
 		while len(corners) > 1:
@@ -243,7 +243,7 @@ class BlackjackImage:
 			neighbors = {i:[] for i in [0,1,2]}
 			for d in range(len(dists)):
 				for i in range(3):
-					if abs(dists[d] - BlackjackImage._projectedCardSize[i]) < 7:
+					if abs(dists[d] - BlackjackImage._projectedCardSize[i]) < BlackjackImage._cardSizeTolerance:
 						neighbors[i].append(corners[d+1])
 						#color = [0,0,0]; color[i]=255
 						#cv2.circle(self.imageOut, tuple(map(lambda i:int(i),corners[d+1])), 5, color, -1)#
@@ -253,12 +253,12 @@ class BlackjackImage:
 					match, c3, c4 = self._cornerMatch(c1, c2, i)
 					if match:
 						for c in corners[1:]:
-							if pf.dist(c3,c) < 7:
+							if pf.dist(c3,c) < BlackjackImage._cardSizeTolerance:
 								c3 = c
 								corners.remove(c)
 								break
 						for c in corners[1:]:
-							if pf.dist(c4,c) < 7:
+							if pf.dist(c4,c) < BlackjackImage._cardSizeTolerance:
 								c4 = c
 								corners.remove(c)
 								break
@@ -278,8 +278,6 @@ class BlackjackImage:
 		return candidates
 
 	def _cornerMatch(self, c1, c2, i):
-		#pf.lerp(c1,pf.add(c1,pf.norm(c1,c2)),1.4)
-		#pf.lerp(box[i], pf.add(box[i],pf.norm(box[idx],box[idx-1])), 1.4))
 		def isWhite(c3,c4):
 			rect = np.matrix(map(lambda c:(int(round(c[0])),int(round(c[1]))), [c1,c2,c3,c4]))
 			mask = np.zeros((imageY,imageX), np.uint8)
