@@ -1,8 +1,9 @@
 import cv2
-from math import cos,sin,pi,acos,atan2
+from math import cos,sin,pi,acos,atan2,atan
 import numpy as np
 import PointFunctions as pf
 from BlackjackGlobals import *
+import itertools
 
 class BlackjackImage:
 	_projectionTransform = None
@@ -211,13 +212,16 @@ class BlackjackImage:
 		# find corners
 		corners = self.extractHarisCorners()
 		cornerList = map(lambda c:tuple(c),list(corners))
+		self.drawCorners(corners)
 
 		if self.isProjected:
 			cardCandidates = self._extractCardCandidatesHelper2(contours, contourApprox, cornerList)
+			for c in cardCandidates:
+				self.drawCorners(c, (255,0,0))
 		else:
 			cardCandidates = self._extractCardCandidatesHelper1(contours, contourApprox, cornerList)
 
-		self.drawCorners(corners)
+		
 		if self.isProjected:
 			for pts in cardCandidates:
 				cardLengths = map(lambda i:pf.dist(pts[0],pts[i]), range(1,4))
@@ -227,16 +231,92 @@ class BlackjackImage:
 		return cardCandidates
 
 	def _extractCardCandidatesHelper2(self, contours, contourApprox, cornerList):
-		#result1 = self._extractCardCandidatesHelper1(contours, contourApprox, cornerList)# DEL
-		
-		# HERE: match corners by distance
-		idx = 5
-		cv2.circle(self.imageOut, tuple(map(lambda i:int(i),cornerList[idx])), 10, (0,255,0), -1)#
-		dists = map(lambda i:pf.dist(cornerList[idx], cornerList[i]), range(len(cornerList)))
-		dists.sort()
-		print dists
+		corners = cornerList[4:][:]
+		candidates = []
+		# match first corner in list until list is depleted
+		while len(corners) > 1:
+			c1 = corners[0]
+			#cv2.circle(self.imageOut, tuple(map(lambda i:int(i),c1)), 10, (255,255,0), -1)
+			# compute distances from all other corners to first corner
+			dists = map(lambda i:pf.dist(c1, corners[i]), range(1,len(corners)))
+			# find which corner are the proper distances to be part of the same card
+			neighbors = {i:[] for i in [0,1,2]}
+			for d in range(len(dists)):
+				for i in range(3):
+					if abs(dists[d] - BlackjackImage._projectedCardSize[i]) < 7:
+						neighbors[i].append(corners[d+1])
+						#color = [0,0,0]; color[i]=255
+						#cv2.circle(self.imageOut, tuple(map(lambda i:int(i),corners[d+1])), 5, color, -1)#
+			foundCard = False
+			for i in range(3):
+				for c2 in neighbors[i]:
+					match, c3, c4 = self._cornerMatch(c1, c2, i)
+					if match:
+						for c in corners[1:]:
+							if pf.dist(c3,c) < 7:
+								c3 = c
+								corners.remove(c)
+								break
+						for c in corners[1:]:
+							if pf.dist(c4,c) < 7:
+								c4 = c
+								corners.remove(c)
+								break
+						corners.remove(c1)
+						corners.remove(c2)
+						candidates.append([c1,c2,c3,c4])
+						foundCard = True
+						break
+				if foundCard:
+					#print candidates[-1]
+					#print len(corners)
+					break
+			if not foundCard:
+				corners = corners[1:]
 
-		return []
+		candidates = map(lambda cand:map(lambda c:(int(round(c[0])),int(round(c[1]))), cand), candidates)
+		return candidates
+
+	def _cornerMatch(self, c1, c2, i):
+		#pf.lerp(c1,pf.add(c1,pf.norm(c1,c2)),1.4)
+		#pf.lerp(box[i], pf.add(box[i],pf.norm(box[idx],box[idx-1])), 1.4))
+		def isWhite(c3,c4):
+			rect = np.matrix(map(lambda c:(int(round(c[0])),int(round(c[1]))), [c1,c2,c3,c4]))
+			mask = np.zeros((imageY,imageX), np.uint8)
+			cv2.drawContours(mask, [rect],0,255,-1)
+			pts = np.nonzero(mask)
+			whiteness = np.mean(self.imageGrey[pts])
+			return whiteness > 250
+
+		# short side
+		if i==0:
+			l = 1.4
+			for a,b in [(c1,c2),(c2,c1)]:
+				c3 = pf.lerp(c2,pf.add(c2,pf.norm(a,b)),l)
+				c4 = pf.lerp(c1,pf.add(c1,pf.norm(a,b)),l)
+				if isWhite(c3,c4):
+					return True, c3, c4
+		# long side
+		elif i==1:
+			l = 1.4
+			for a,b in [(c1,c2),(c2,c1)]:
+				c3 = pf.lerp(c2,pf.add(c2,pf.norm(a,b)),l)
+				c4 = pf.lerp(c1,pf.add(c1,pf.norm(a,b)),l)
+				if isWhite(c3,c4):
+					return True, c3, c4
+		# diagonal
+		elif i==2:
+			for a,l in ((atan(2.5/3.5), 3.5/(2.5**2+3.5**2)**.5),(atan(3.5/2.5), 2.5/(2.5**2+3.5**2)**.5)):
+				c,s = cos(a),sin(a)
+				p = pf.vec(c1,c2)
+				c3 = pf.lerp(c1,pf.add(c1,(c*p[0]-s*p[1],s*p[0]+c*p[1])),l)
+				p = pf.vec(c2,c1)
+				c4 = pf.lerp(c2, pf.add(c2,(c*p[0]-s*p[1],s*p[0]+c*p[1])), l)
+				if isWhite(c3,c4):
+					return True, c3, c4
+
+		return False, None, None
+
 
 	def _extractCardCandidatesHelper1(self, contours, contourApprox, cornerList):
 		condition = lambda i:len(contourApprox[i])==4 and 800<cv2.contourArea(contours[i])
