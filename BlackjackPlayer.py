@@ -191,11 +191,14 @@ class BlackjackPlayer:
 
 			if BlackjackPlayer.printCards:
 				print name, value, names, c.center
+			"""
 			if value < .8:
 				goodCards.append(c)
 			else:
 				print name, value, names, c.center
 				goodCards.append(c)
+			"""
+			goodCards.append(c)
 		self.displayCards(goodCards)
 		self.cards = goodCards
 		self.currState = BlackjackState(goodCards)
@@ -281,7 +284,7 @@ class BlackjackPlayer:
 		if not self.hasWebcam:
 			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
 			#for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
-			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,24)):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", [31] + range(23,31)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
