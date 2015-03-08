@@ -174,7 +174,6 @@ class BlackjackPlayer:
 		candidates = image.extractCardCandidates()
 		cards = self.getTransformedCardCandidates(image, candidates)
 		cards = self.filterCards(cards)
-		goodCards = []
 		for c in cards:
 			# optional card sharpening, only affects output appearance
 			if BlackjackPlayer.sharpenCardOutput:
@@ -191,17 +190,9 @@ class BlackjackPlayer:
 
 			if BlackjackPlayer.printCards:
 				print name, value, names, c.center
-			"""
-			if value < .8:
-				goodCards.append(c)
-			else:
-				print name, value, names, c.center
-				goodCards.append(c)
-			"""
-			goodCards.append(c)
-		self.displayCards(goodCards)
-		self.cards = goodCards
-		self.currState = BlackjackState(goodCards)
+		self.displayCards(cards)
+		self.cards = cards
+		self.currState = BlackjackState(cards)
 		if self.hasWebcam:
 			self.speaker.analyzeState(self.currState)
 

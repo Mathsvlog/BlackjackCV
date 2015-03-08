@@ -8,7 +8,7 @@ import itertools
 class BlackjackImage:
 	_projectionTransform = None
 	_projectedCardSize = None
-	_cardSizeTolerance = 7
+	_cardSizeTolerance = 8
 	# tolerance of at least 6
 
 	"""
@@ -235,49 +235,36 @@ class BlackjackImage:
 
 	def _extractCardCandidatesHelper3(self, contours, contourApprox, cornerList):
 		size = self._projectedCardSize[0]*self._projectedCardSize[1]
-		"""
-		for i,c in enumerate(contours):
-			if cv2.contourArea(c) > size:
-				for p in contourApprox[i].tolist():
-					cv2.circle(self.imageOut, tuple(p[0]), 5, (0,0,255), -1)
-		"""
+
 		# filter contours that are large enough to contain at least one card
 		goodContourIndices = filter(lambda i:cv2.contourArea(contours[i]) > size and len(contourApprox[i])>3, range(len(contours)))
 		bestDist = BlackjackImage._projectedCardSize[2]
 		candidates = []
+		lerpAmount = 0.03# lerp shift amount
 		# for each contour, find diagonal opposites and determine if they are cards
 		for a in map(lambda idx:contourApprox[idx], goodContourIndices):
 			visited = []
-
-			(cx,cy),r =cv2.minEnclosingCircle(a)
-			center = (int(cx),int(cy))
+			# ignore points that cannot be a card corner
 			for i in range(len(a)):
 				cx,cy = pf.avg([a[i-2][0],a[i-1][0],a[i][0]])
-				#print pf.ccw(a[i-2][0],a[i-1][0],a[i][0]),
-				#if abs(pf.angle(a[i-2][0],a[i-1][0],a[i][0]) - pi/2) > 0.2:
 				if self.imageGrey[cy,cx] != 255:
-					#cv2.circle(self.imageOut, (cx, cy), 5, (255,255,0), -1)
 					visited.append(i-1 if i>0 else len(a)-1)
 					cv2.circle(self.imageOut, tuple(a[i-1][0]), 3, (0,255,0), -1)
 				else:
-					#cv2.circle(self.imageOut, (cx, cy), 5, (255,0,0), -1)
 					cv2.circle(self.imageOut, tuple(a[i-1][0]), 5, (0,0,255), -1)
-				#cv2.putText(self.imageOut, str(i-1), tuple(a[i-1][0]), cv2.FONT_HERSHEY_SIMPLEX, .5, (100,100,100), thickness=1)
-			#print
-
+			# for each point that has not yet been visited
 			for i in range(len(a)):
 				if i not in visited:
+					# determine if two points are two corners of a card
 					for j in filter(lambda idx:idx not in visited, range(i,len(a))):
 						p1 = tuple(a[i][0])
 						p2 = tuple(a[j][0])
 						dist = pf.dist(p1,p2)
 						if abs(dist-bestDist) < BlackjackImage._cardSizeTolerance:
-							p1in = pf.lerp(p1,p2, 0.05)
-							p2in = pf.lerp(p2,p1, 0.05)
+							p1in = pf.lerp(p1,p2, lerpAmount)
+							p2in = pf.lerp(p2,p1, lerpAmount)
 							match, candidate, (idx3,idx4) = self._cornerMatch(p1in, p2in, 2)
 							if match:
-								candidate[0],candidate[2] = pf.lerp(candidate[0],candidate[2], -.04), pf.lerp(candidate[2],candidate[0], -.04)
-								candidate[1],candidate[3] = pf.lerp(candidate[1],candidate[3], -.04), pf.lerp(candidate[3],candidate[1], -.04)
 								candidates.append(candidate)
 								visited.append(j)
 								visited.append(i)
@@ -292,8 +279,7 @@ class BlackjackImage:
 						
 								break
 
-		#print
-		return candidates#self._extractCardCandidatesHelper2(contours, contourApprox, cornerList)
+		return candidates
 
 	def _extractCardCandidatesHelper2(self, contours, contourApprox, cornerList):
 		corners = cornerList[:][:]
