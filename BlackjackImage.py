@@ -94,8 +94,8 @@ class BlackjackImage:
 		angle = -atan2(p[1,0],p[0,0])
 		M = np.matrix([[cos(angle), -sin(angle),0],[sin(angle), cos(angle),0],[0,0,1]])*M
 		# fix rotation to the z axis
-		M[1,0] = 0
-		M[2,0] = 0
+		#M[1,0] = 0
+		#M[2,0] = 0
 		# scale to fix corners
 		scale = float("inf")
 		for i,j in [[0,1],[1,0]]:
@@ -248,23 +248,24 @@ class BlackjackImage:
 						#color = [0,0,0]; color[i]=255
 						#cv2.circle(self.imageOut, tuple(map(lambda i:int(i),corners[d+1])), 5, color, -1)#
 			foundCard = False
-			for i in range(3):
+			for i in [2,1,0]:
 				for c2 in neighbors[i]:
-					match, c3, c4 = self._cornerMatch(c1, c2, i)
+					match, candidate, (i,j) = self._cornerMatch(c1, c2, i)
 					if match:
+						c3,c4 = candidate[i], candidate[j]
 						for c in corners[1:]:
 							if pf.dist(c3,c) < BlackjackImage._cardSizeTolerance:
-								c3 = c
+								candidate[i] = c3
 								corners.remove(c)
 								break
 						for c in corners[1:]:
 							if pf.dist(c4,c) < BlackjackImage._cardSizeTolerance:
-								c4 = c
+								candidate[j] = c4
 								corners.remove(c)
 								break
 						corners.remove(c1)
 						corners.remove(c2)
-						candidates.append([c1,c2,c3,c4])
+						candidates.append(candidate)
 						foundCard = True
 						break
 				if foundCard:
@@ -278,8 +279,8 @@ class BlackjackImage:
 		return candidates
 
 	def _cornerMatch(self, c1, c2, i):
-		def isWhite(c3,c4):
-			rect = np.matrix(map(lambda c:(int(round(c[0])),int(round(c[1]))), [c1,c2,c3,c4]))
+		def isWhite(candidate):
+			rect = np.matrix(map(lambda c:(int(round(c[0])),int(round(c[1]))), candidate))
 			mask = np.zeros((imageY,imageX), np.uint8)
 			cv2.drawContours(mask, [rect],0,255,-1)
 			pts = np.nonzero(mask)
@@ -292,16 +293,18 @@ class BlackjackImage:
 			for a,b in [(c1,c2),(c2,c1)]:
 				c3 = pf.lerp(c2,pf.add(c2,pf.norm(a,b)),l)
 				c4 = pf.lerp(c1,pf.add(c1,pf.norm(a,b)),l)
-				if isWhite(c3,c4):
-					return True, c3, c4
+				candidate = [c1,c2,c3,c4]
+				if isWhite(candidate):
+					return True, candidate, (2,3)
 		# long side
 		elif i==1:
 			l = 1.4
 			for a,b in [(c1,c2),(c2,c1)]:
 				c3 = pf.lerp(c2,pf.add(c2,pf.norm(a,b)),l)
 				c4 = pf.lerp(c1,pf.add(c1,pf.norm(a,b)),l)
-				if isWhite(c3,c4):
-					return True, c3, c4
+				candidate = [c1,c2,c3,c4]
+				if isWhite(candidate):
+					return True, candidate, (2,3)
 		# diagonal
 		elif i==2:
 			for a,l in ((atan(2.5/3.5), 3.5/(2.5**2+3.5**2)**.5),(atan(3.5/2.5), 2.5/(2.5**2+3.5**2)**.5)):
@@ -310,10 +313,11 @@ class BlackjackImage:
 				c3 = pf.lerp(c1,pf.add(c1,(c*p[0]-s*p[1],s*p[0]+c*p[1])),l)
 				p = pf.vec(c2,c1)
 				c4 = pf.lerp(c2, pf.add(c2,(c*p[0]-s*p[1],s*p[0]+c*p[1])), l)
-				if isWhite(c3,c4):
-					return True, c3, c4
+				candidate = [c1,c3,c2,c4]
+				if isWhite(candidate):
+					return True, candidate, (1,3)
 
-		return False, None, None
+		return False, None, (-1,-1)
 
 
 	def _extractCardCandidatesHelper1(self, contours, contourApprox, cornerList):
