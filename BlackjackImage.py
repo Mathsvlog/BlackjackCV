@@ -8,7 +8,7 @@ import itertools
 class BlackjackImage:
 	_projectionTransform = None
 	_projectedCardSize = None
-	_cardSizeTolerance = 8
+	_cardSizeTolerance = 10
 	# tolerance of at least 6
 
 	"""
@@ -58,7 +58,7 @@ class BlackjackImage:
 	"""
 	def _computeProjectionTransform(self):
 		newImage = np.copy(self.image)
-		candidates = self.extractCardCandidates()
+		candidates, _ = self.extractCardCandidates()
 		# Can't compute projection matrix if there are no candidates
 		if len(candidates)==0:
 			return
@@ -215,7 +215,7 @@ class BlackjackImage:
 		cornerList = map(lambda c:tuple(c),list(corners))
 		#self.drawCorners(corners)
 		if self.isProjected:
-			cardCandidates = self._extractCardCandidatesHelper3(contours, contourApprox, cornerList)
+			cardCandidates, cardGroups = self._extractCardCandidatesHelper3(contours, contourApprox, cornerList)
 			for c in cardCandidates:
 				#self.drawCorners(c, (255,0,0))
 				#self.drawContours(c, (255,0,0))
@@ -224,6 +224,7 @@ class BlackjackImage:
 				cv2.drawContours(self.imageOut, [rect],0,(255,0,0),1)
 		else:
 			cardCandidates = self._extractCardCandidatesHelper1(contours, contourApprox, cornerList)
+			cardGroups = [0 for i in range(len(cardCandidates))]
 		
 		if self.isProjected:
 			for pts in cardCandidates:
@@ -231,7 +232,7 @@ class BlackjackImage:
 				cardLengths.sort()
 				errors = map(lambda i:abs(cardLengths[i]-BlackjackImage._projectedCardSize[i]), range(3))
 				#print max(errors)
-		return cardCandidates
+		return cardCandidates, cardGroups
 
 	def _extractCardCandidatesHelper3(self, contours, contourApprox, cornerList):
 		size = self._projectedCardSize[0]*self._projectedCardSize[1]
@@ -240,9 +241,10 @@ class BlackjackImage:
 		goodContourIndices = filter(lambda i:cv2.contourArea(contours[i]) > size and len(contourApprox[i])>3, range(len(contours)))
 		bestDist = BlackjackImage._projectedCardSize[2]
 		candidates = []
+		candidateGroup = []
 		lerpAmount = 0.03# lerp shift amount
 		# for each contour, find diagonal opposites and determine if they are cards
-		for a in map(lambda idx:contourApprox[idx], goodContourIndices):
+		for aIdx,a in map(lambda idx:(idx,contourApprox[idx]), goodContourIndices):
 			visited = []
 			# ignore points that cannot be a card corner
 			for i in range(len(a)):
@@ -266,6 +268,7 @@ class BlackjackImage:
 							match, candidate, (idx3,idx4) = self._cornerMatch(p1in, p2in, 2)
 							if match:
 								candidates.append(candidate)
+								candidateGroup.append(aIdx)
 								visited.append(j)
 								visited.append(i)
 
@@ -279,7 +282,7 @@ class BlackjackImage:
 						
 								break
 
-		return candidates
+		return candidates, candidateGroup
 
 	def _extractCardCandidatesHelper2(self, contours, contourApprox, cornerList):
 		corners = cornerList[:][:]

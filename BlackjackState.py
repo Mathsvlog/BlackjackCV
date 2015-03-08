@@ -64,9 +64,9 @@ class BlackjackState:
 	minGroupDist = max(imageX,imageY)/4
 
 
-	def __init__(self, cards, dealerPos=None):
-		self.dealerPos = dealerPos
-		self.isValid = self._isStateValid(cards)
+	def __init__(self, cards, cardGroups):
+		self.dealerPos = None
+		self.isValid = self._isStateValid(cards, cardGroups)
 		if not self.groups is None:
 			print self.groups
 
@@ -75,15 +75,15 @@ class BlackjackState:
 			return False
 		return str(self.groups)==str(other.groups)
 
-	def _isStateValid(self, cards):
+	def _isStateValid(self, cards, cardGroups):
 		self.groups = None
 
 		# state not valid if no cards
 		if len(cards)==0:
 			return False
 
-		# group cards by proximity
-		groups = self._groupCards(cards)
+		# group cards by given card group indices
+		groups = self._groupCards(cards, cardGroups)
 
 		# state not valid if dealer or player doesn't have cards
 		if len(groups) < 2 or not self._identifyDealer(groups):
@@ -104,30 +104,12 @@ class BlackjackState:
 
 
 	"""
-	Group list of BlackjackCard objects by their proximity
+	Group list of BlackjackCard objects by their given group indices
 	"""
-	def _groupCards(self, cards):
-		groupIndex = {i:i for i in range(len(cards))}
-		# for each card
-		for i,c1 in enumerate(cards):
-			closestCard = i
-			closestDist = BlackjackState.minGroupDist
-			# find closest card
-			for j,c2 in enumerate(cards):
-				if i!=j:
-					dist = pf.dist(c1.center, c2.center)
-					if dist < closestDist:
-						closestCard, closestDist = j, dist
-			# combine the two groups
-			if closestCard!=i:
-				if groupIndex[i] > groupIndex[closestCard]:
-					groupIndex[i] = groupIndex[closestCard]
-				else:
-					groupIndex[closestCard] = groupIndex[i]
-		# create list of cards for each group
-		groups = {g:[] for g in set(groupIndex.values())}
+	def _groupCards(self, cards, cardGroups):
+		groups = {g:[] for g in set(cardGroups)}
 		for i,c in enumerate(cards):
-			groups[groupIndex[i]].append(cards[i])
+			groups[cardGroups[i]].append(cards[i])
 		return map(lambda g:CardGroup(g), groups.values())
 
 	"""

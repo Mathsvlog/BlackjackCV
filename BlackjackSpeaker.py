@@ -6,13 +6,14 @@ class BlackjackSpeaker:
 
 	repeatsRequired = 5
 	missesRequired = 5
-	phrases = {"H": "hit me", "S":"stand", "P":"split the cards", "D":"double down", "B":"i bust"}
+	phrases = {"H": "Hit me.", "S":"Stand.", "P":"Split the cards.", "D":"Double down.", "B":"I bust."}
+	verbose = True
 
 	def __init__(self):
 		self.engine = pyttsx.init()
-		self.engine.setProperty("rate", 150)
+		self.engine.setProperty("rate", 120)
 		voices = self.engine.getProperty("voices")
-		self.engine.setProperty("voice", voices[0].id)
+		self.engine.setProperty("voice", voices[2].id)
 		self.lastState = None
 		self.repeats = 0
 		self.misses = 0
@@ -26,7 +27,11 @@ class BlackjackSpeaker:
 				# figure out move
 				player = filter(lambda group:not group.isDealer, state.groups)[0]
 				if player.move in BlackjackSpeaker.phrases:
-					if not self.say(BlackjackSpeaker.phrases[player.move]):
+					phrase = ""
+					if BlackjackSpeaker.verbose:
+						phrase += self._verbosePhrase(state)
+					phrase += BlackjackSpeaker.phrases[player.move]
+					if not self.say(phrase):
 						self.repeats -= 1
 		else:
 			self.misses += 1
@@ -43,5 +48,14 @@ class BlackjackSpeaker:
 			return True
 		return False
 
+	def _verbosePhrase(self, state):
+		phrase = ""
+		dealer = filter(lambda g:g.isDealer, state.groups)
+		player = filter(lambda g:not g.isDealer, state.groups)
+		if len(dealer)!=1 or len(player)!=1:
+			return phrase
+		phrase += "I have "+str(player[0].score)
+		phrase += " and dealer has "+str(dealer[0].score)+"; "
+		return phrase
 
 BlackjackSpeaker()

@@ -171,9 +171,9 @@ class BlackjackPlayer:
 	for identity of cards
 	"""
 	def analyzeImageForCards(self, image):
-		candidates = image.extractCardCandidates()
+		candidates, cardGroups = image.extractCardCandidates()
 		cards = self.getTransformedCardCandidates(image, candidates)
-		cards = self.filterCards(cards)
+		#cards = self.filterCards(cards)
 		for c in cards:
 			# optional card sharpening, only affects output appearance
 			if BlackjackPlayer.sharpenCardOutput:
@@ -192,7 +192,7 @@ class BlackjackPlayer:
 				print name, value, names, c.center
 		self.displayCards(cards)
 		self.cards = cards
-		self.currState = BlackjackState(cards)
+		self.currState = BlackjackState(cards, cardGroups)
 		if self.hasWebcam:
 			self.speaker.analyzeState(self.currState)
 
