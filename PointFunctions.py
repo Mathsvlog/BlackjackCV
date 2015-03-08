@@ -23,3 +23,4 @@ rounded = lambda p:map(lambda i:int(round(i)), p)
 add = lambda a,b:[a[0]+b[0],a[1]+b[1]]
 
 avg = lambda pts: map(lambda x:sum(x)/len(pts),zip(*pts))
+center = lambda pts: map(lambda x:min(x)+(max(x)-min(x))/2,zip(*pts))

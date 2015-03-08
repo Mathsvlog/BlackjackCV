@@ -8,7 +8,7 @@ import itertools
 class BlackjackImage:
 	_projectionTransform = None
 	_projectedCardSize = None
-	_cardSizeTolerance = 10
+	_cardSizeTolerance = 7
 	# tolerance of at least 6
 
 	"""
@@ -213,12 +213,15 @@ class BlackjackImage:
 		# find corners
 		corners = self.extractHarisCorners()
 		cornerList = map(lambda c:tuple(c),list(corners))
-		self.drawCorners(corners)
-
+		#self.drawCorners(corners)
 		if self.isProjected:
 			cardCandidates = self._extractCardCandidatesHelper3(contours, contourApprox, cornerList)
 			for c in cardCandidates:
-				self.drawCorners(c, (255,0,0))
+				#self.drawCorners(c, (255,0,0))
+				#self.drawContours(c, (255,0,0))
+
+				rect = np.matrix(map(lambda c:(int(round(c[0])),int(round(c[1]))), c))
+				cv2.drawContours(self.imageOut, [rect],0,(255,0,0),1)
 		else:
 			cardCandidates = self._extractCardCandidatesHelper1(contours, contourApprox, cornerList)
 		
@@ -232,55 +235,64 @@ class BlackjackImage:
 
 	def _extractCardCandidatesHelper3(self, contours, contourApprox, cornerList):
 		size = self._projectedCardSize[0]*self._projectedCardSize[1]
-		print size, len(contours)
+		"""
 		for i,c in enumerate(contours):
 			if cv2.contourArea(c) > size:
-				print cv2.contourArea(c), len(contourApprox[i])
 				for p in contourApprox[i].tolist():
 					cv2.circle(self.imageOut, tuple(p[0]), 5, (0,0,255), -1)
-
-		goodContourIndices = filter(lambda i:cv2.contourArea(contours[i]) > size, range(len(contours)))
+		"""
+		# filter contours that are large enough to contain at least one card
+		goodContourIndices = filter(lambda i:cv2.contourArea(contours[i]) > size and len(contourApprox[i])>3, range(len(contours)))
 		bestDist = BlackjackImage._projectedCardSize[2]
 		candidates = []
-		visited = []
+		# for each contour, find diagonal opposites and determine if they are cards
 		for a in map(lambda idx:contourApprox[idx], goodContourIndices):
+			visited = []
+
+			(cx,cy),r =cv2.minEnclosingCircle(a)
+			center = (int(cx),int(cy))
+			for i in range(len(a)):
+				cx,cy = pf.avg([a[i-2][0],a[i-1][0],a[i][0]])
+				#print pf.ccw(a[i-2][0],a[i-1][0],a[i][0]),
+				#if abs(pf.angle(a[i-2][0],a[i-1][0],a[i][0]) - pi/2) > 0.2:
+				if self.imageGrey[cy,cx] != 255:
+					#cv2.circle(self.imageOut, (cx, cy), 5, (255,255,0), -1)
+					visited.append(i-1 if i>0 else len(a)-1)
+					cv2.circle(self.imageOut, tuple(a[i-1][0]), 3, (0,255,0), -1)
+				else:
+					#cv2.circle(self.imageOut, (cx, cy), 5, (255,0,0), -1)
+					cv2.circle(self.imageOut, tuple(a[i-1][0]), 5, (0,0,255), -1)
+				#cv2.putText(self.imageOut, str(i-1), tuple(a[i-1][0]), cv2.FONT_HERSHEY_SIMPLEX, .5, (100,100,100), thickness=1)
+			#print
+
 			for i in range(len(a)):
 				if i not in visited:
 					for j in filter(lambda idx:idx not in visited, range(i,len(a))):
 						p1 = tuple(a[i][0])
 						p2 = tuple(a[j][0])
 						dist = pf.dist(p1,p2)
-						#print i,j, int(abs(dist-bestDist)), abs(dist-bestDist) < BlackjackImage._cardSizeTolerance#
 						if abs(dist-bestDist) < BlackjackImage._cardSizeTolerance:
 							p1in = pf.lerp(p1,p2, 0.05)
 							p2in = pf.lerp(p2,p1, 0.05)
-							#cv2.circle(self.imageOut, tuple(map(lambda idx:int(idx),p1in)), 3, (0,0,50), -1)#
-							#cv2.circle(self.imageOut, tuple(map(lambda idx:int(idx),p2in)), 3, (0,0,150), -1)#
 							match, candidate, (idx3,idx4) = self._cornerMatch(p1in, p2in, 2)
 							if match:
-								#cv2.circle(self.imageOut, tuple(map(lambda idx:int(idx),candidate[idx3])), 3, (150,0,0), -1)#
-								#cv2.circle(self.imageOut, tuple(map(lambda idx:int(idx),candidate[idx4])), 3, (150,0,0), -1)#
-								
 								candidate[0],candidate[2] = pf.lerp(candidate[0],candidate[2], -.04), pf.lerp(candidate[2],candidate[0], -.04)
 								candidate[1],candidate[3] = pf.lerp(candidate[1],candidate[3], -.04), pf.lerp(candidate[3],candidate[1], -.04)
-
-
 								candidates.append(candidate)
 								visited.append(j)
 								visited.append(i)
 
+								# don't consider points that are the third or fourth corner
 								for k in filter(lambda idx:idx not in visited, range(len(a))):
 									p3 = tuple(a[k][0])
 									dist1 = pf.dist(candidate[idx3],p3)
 									dist2 = pf.dist(candidate[idx4],p3)
-									print dist1, dist2
 									if dist1 < BlackjackImage._cardSizeTolerance or dist2 < BlackjackImage._cardSizeTolerance:
 										visited.append(k)
 						
-								#self.show()#
 								break
 
-		print
+		#print
 		return candidates#self._extractCardCandidatesHelper2(contours, contourApprox, cornerList)
 
 	def _extractCardCandidatesHelper2(self, contours, contourApprox, cornerList):
@@ -340,16 +352,16 @@ class BlackjackImage:
 			whiteness = np.mean(self.imageGrey[pts])
 
 			ptsWhite = True
-			print "C:",
+			#print "C:",
 			for x,y in rect.tolist():
-				print self.imageGrey[y,x],
+				#print self.imageGrey[y,x],
 				if self.imageGrey[y,x]!=255:
 					ptsWhite = False
-			print whiteness
+			#print whiteness
 			if not ptsWhite:
 				return False
 
-			return whiteness > 240
+			return whiteness > 250
 
 		# short side
 		if i==0:
