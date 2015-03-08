@@ -10,16 +10,23 @@ class BlackjackSpeaker:
 	verbose = True
 
 	def __init__(self):
+		# pyttsx engine and properties
 		self.engine = pyttsx.init()
 		self.engine.setProperty("rate", 120)
 		voices = self.engine.getProperty("voices")
-		self.engine.setProperty("voice", voices[2].id)
-		self.lastState = None
-		self.repeats = 0
-		self.misses = 0
-		self.thread = None
+		self.engine.setProperty("voice", voices[-1].id)
+
+		self.lastState = None# current belief state of the speaker
+		self.repeats = 0# if hits repeatsRequired, will speak move
+		self.misses = 0# if hits missresRequired, will set lastState to current state
+		self.thread = None# the separate thread handling speaking
+		self.isWaiting = False
 
 	def analyzeState(self, state):
+		print self.isWaiting
+		if self.isWaiting:
+			pass
+			
 		if state == self.lastState:
 			self.repeats += 1
 			self.misses = 0
@@ -31,6 +38,7 @@ class BlackjackSpeaker:
 					if BlackjackSpeaker.verbose:
 						phrase += self._verbosePhrase(state)
 					phrase += BlackjackSpeaker.phrases[player.move]
+					self.isWaiting = player.move == "S"
 					if not self.say(phrase):
 						self.repeats -= 1
 		else:

@@ -148,6 +148,7 @@ class BlackjackImage:
 		#imValues = cv2.cornerHarris(self.imageGrey, 5, 9, 0.04)
 		if self.isProjected:
 			cv2.imshow("grey", self.imageGrey)
+			cv2.moveWindow("grey", 930,360)
 			block = min(BlackjackImage._projectedCardSize)/6
 			imValues = cv2.cornerHarris(self.imageGrey, block, 9, 0.04)
 		else:
