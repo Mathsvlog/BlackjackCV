@@ -149,7 +149,8 @@ class BlackjackPlayer:
 		P = np.linalg.solve(A,B)
 		M = np.reshape(np.append(P,1),(3,3))
 		# test card orienation
-		if not image is None:
+
+		if not self.project and not image is None:
 			card = cv2.warpPerspective(image.getInputImage(), M, cardSize)
 			if not self._correctCardOrientation(card):
 				return self.computePerspective(box, image=None, badOrientationDetected=True)
@@ -272,7 +273,7 @@ class BlackjackPlayer:
 		if not self.hasWebcam:
 			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
 			#for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
-			for filename in map(lambda i:"images/"+str(i)+".jpg", [31]+range(26,30)):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", range(17,24)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)

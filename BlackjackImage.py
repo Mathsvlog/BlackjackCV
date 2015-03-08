@@ -33,7 +33,7 @@ class BlackjackImage:
 			if not BlackjackImage._projectionTransform is None:
 				self._applyProjectionTransform()
 
-		self.isProjected = project
+		self.isProjected = project and BlackjackImage._projectedCardSize!=None
 
 
 	"""
@@ -313,6 +313,8 @@ class BlackjackImage:
 				c3 = pf.lerp(c1,pf.add(c1,(c*p[0]-s*p[1],s*p[0]+c*p[1])),l)
 				p = pf.vec(c2,c1)
 				c4 = pf.lerp(c2, pf.add(c2,(c*p[0]-s*p[1],s*p[0]+c*p[1])), l)
+				if pf.dist(c1,c3) > pf.dist(c1,c4):
+					c3,c4 = c4,c3
 				candidate = [c1,c3,c2,c4]
 				if isWhite(candidate):
 					return True, candidate, (1,3)
