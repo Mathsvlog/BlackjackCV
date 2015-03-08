@@ -80,6 +80,8 @@ class BlackjackPlayer:
 				elif key == ord('p'):
 					BlackjackImage._projectionTransform = None
 					self.project = False
+				elif key == ord('w'):
+					self.hasWebcam = not self.hasWebcam
 				elif key==32:# SPACE
 					self.project = True
 					self.reproject = True
@@ -172,6 +174,7 @@ class BlackjackPlayer:
 		candidates = image.extractCardCandidates()
 		cards = self.getTransformedCardCandidates(image, candidates)
 		cards = self.filterCards(cards)
+		goodCards = []
 		for c in cards:
 			# optional card sharpening, only affects output appearance
 			if BlackjackPlayer.sharpenCardOutput:
@@ -188,9 +191,14 @@ class BlackjackPlayer:
 
 			if BlackjackPlayer.printCards:
 				print name, value, names, c.center
-		self.displayCards(cards)
-		self.cards = cards
-		self.currState = BlackjackState(cards)
+			if value < .8:
+				goodCards.append(c)
+			else:
+				print name, value, names, c.center
+				goodCards.append(c)
+		self.displayCards(goodCards)
+		self.cards = goodCards
+		self.currState = BlackjackState(goodCards)
 		if self.hasWebcam:
 			self.speaker.analyzeState(self.currState)
 

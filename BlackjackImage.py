@@ -110,7 +110,6 @@ class BlackjackImage:
 		cardLengths = map(lambda i:pf.dist(pts[0][0],pts[i][0]), range(1,4))
 		cardLengths.sort()
 		BlackjackImage._projectedCardSize = tuple(map(lambda l:int(round(l)), cardLengths))
-		print BlackjackImage._projectedCardSize
 
 	def _applyProjectionTransform(self):
 		# project original image
@@ -203,11 +202,12 @@ class BlackjackImage:
 
 		# whiten contours before finding harris corners
 		if self.isProjected:
-			for c in contours:
-				cv2.drawContours(self.imageGrey, [c], 0, (255,255,255), -1)
-				cv2.drawContours(self.imageDark, [c], 0, (255,255,255), -1)
-			contours = self.extractCannyContours()
-			contourApprox = map(lambda c:self.approx(c), contours)
+			for _ in range(2):
+				for c in contours:
+					cv2.drawContours(self.imageGrey, [c], 0, (255,255,255), -1)
+					cv2.drawContours(self.imageDark, [c], 0, (255,255,255), -1)
+				contours = self.extractCannyContours()
+				contourApprox = map(lambda c:self.approx(c), contours)
 
 
 		# find corners
