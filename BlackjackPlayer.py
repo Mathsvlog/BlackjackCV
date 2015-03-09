@@ -186,7 +186,7 @@ class BlackjackPlayer:
 			names, values = self.comparer.getClosestCards(c, 5)
 			name, value = names[0], values[0]
 			certainty = str(int(log(value, .15)))
-			c.setCardName(name+"_"+certainty)
+			c.setCardName(name)#+"_"+certainty)
 
 			if BlackjackPlayer.printCards:
 				print name, value, names, c.center

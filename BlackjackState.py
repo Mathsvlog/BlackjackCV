@@ -5,6 +5,8 @@ class CardGroup:
 
 	def __init__(self, cards):
 		self.cards = cards
+		self.cardStrings = map(lambda c:c.name, cards)
+		self.cardStrings.sort()
 		self.center = tuple(pf.avg(map(lambda c:c.center, cards)))
 		self.isDealer = False
 		self.isValid = len(cards)>1
@@ -20,7 +22,8 @@ class CardGroup:
 		return g
 
 	def __eq__(self, other):
-		return set(self.cards) == set(other.cards) and self.isDealer==other.isDealer 
+		#return set(self.cards) == set(other.cards) and self.isDealer==other.isDealer 
+		return self.cardStrings == other.cardStrings and self.isDealer==other.isDealer 
 
 	def _computeScore(self):
 		values = map(lambda c:c.name[0], self.cards)
@@ -69,11 +72,19 @@ class BlackjackState:
 		self.isValid = self._isStateValid(cards, cardGroups)
 		if not self.groups is None:
 			print self.groups
+			self._computeDealersAndPlayers()
+		else:
+			self.dealers = []
+			self.players = []
 
 	def __eq__(self, other):
 		if other==None:
 			return False
 		return str(self.groups)==str(other.groups)
+
+	def _computeDealersAndPlayers(self):
+		self.dealers = filter(lambda g:g.isDealer, self.groups)
+		self.players = filter(lambda g:not g.isDealer, self.groups)
 
 	def _isStateValid(self, cards, cardGroups):
 		self.groups = None
@@ -86,18 +97,20 @@ class BlackjackState:
 		groups = self._groupCards(cards, cardGroups)
 
 		# state not valid if dealer or player doesn't have cards
-		if len(groups) < 2 or not self._identifyDealer(groups):
+		hasDealer = self._identifyDealer(groups)
+		if len(groups) < 2:
 			return False
 
 		# state not valid if any player group has <2 cards
 		if not all(map(lambda g:g.isValid, groups)):
 			return False
 
-		for group in groups:
-			if not group.isDealer:
-				if group.computeMove(self.dealer)=="I":
-					print "FOUND INVALID STATE", self.group, self.dealer
-					return False
+		if hasDealer:
+			for group in groups:
+				if not group.isDealer:
+					if group.computeMove(self.dealer)=="I":
+						print "FOUND INVALID STATE", self.group, self.dealer
+						return False
 
 		self.groups = groups
 		return True
@@ -131,3 +144,48 @@ class BlackjackState:
 		self.dealer.setDealer()
 		self.dealerPos = self.dealer.center
 		return True
+
+	def setDealer(self, group):
+		if group in self.groups:
+			self.groups[self.groups.index(group)].isDealer = True
+			self._computeDealersAndPlayers()
+			print "SDJFKLSDJ", self.dealers
+			if len(self.dealers) == 0:
+				print "WHAT THE ACTUAL FUCKING FUCK"
+
+	"""
+	Determines if the given next state is a valid future state
+	from this state after the player has standed
+	"""
+	def isNextState(self, next):
+		# only consider valid states
+		if not self.isValid or not next.isValid:
+			return False, None
+		# currently only consider when there's two groups
+		if len(next.groups)!=2 or len(self.groups)!=2:
+			return False, None
+		# next state should not be able to recognise a dealer
+		if len(next.dealers)!=0:
+			return False, None
+		# if two states are exactly the same, it is not a future state
+		if self == next:
+			return False, None
+
+		# only matches if player group matches and dealer has at least same cards 
+		playerMatches = False
+		dealerMatches = False
+		dealerGroup = None
+		for g in next.groups:
+			if g == self.players[0]:
+				playerMatches = True
+			else:
+				dealerMatches = True
+				for cardStr in self.dealers[0].cardStrings:
+					if cardStr not in g.cardStrings:
+						dealerMatches = False
+						break
+				if dealerMatches:
+					dealerGroup = g
+
+
+		return (playerMatches and dealerMatches, dealerGroup)

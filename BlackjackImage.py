@@ -8,7 +8,7 @@ import itertools
 class BlackjackImage:
 	_projectionTransform = None
 	_projectedCardSize = None
-	_cardSizeTolerance = 10
+	_cardSizeTolerance = 15
 	# tolerance of at least 6
 
 	"""
@@ -152,7 +152,7 @@ class BlackjackImage:
 			block = min(BlackjackImage._projectedCardSize)/6
 			imValues = cv2.cornerHarris(self.imageGrey, block, 9, 0.04)
 		else:
-			imValues = cv2.cornerHarris(self.imageGrey, 8, 9, 0.04)
+			imValues = cv2.cornerHarris(self.imageGrey, 6, 9, 0.04)
 		ret, imCorners = cv2.threshold(imValues, 0.04*imValues.max(), 255, 0)
 		imCorners = np.uint8(imCorners)
 		_, _, _, centroids = cv2.connectedComponentsWithStats(imCorners)
@@ -268,7 +268,11 @@ class BlackjackImage:
 							p2in = pf.lerp(p2,p1, lerpAmount)
 							match, candidate, (idx3,idx4) = self._cornerMatch(p1in, p2in, 2)
 							if match:
-								candidates.append(candidate)
+								c1,c2,c3,c4 = candidate
+								c1,c3 = pf.lerp(c1,c3, -lerpAmount), pf.lerp(c3,c1, -lerpAmount)
+								c2,c4 = pf.lerp(c2,c4, -lerpAmount), pf.lerp(c4,c2, -lerpAmount)
+
+								candidates.append([c1,c2,c3,c4])
 								candidateGroup.append(aIdx)
 								visited.append(j)
 								visited.append(i)
@@ -351,7 +355,7 @@ class BlackjackImage:
 			if not ptsWhite:
 				return False
 
-			return whiteness > 250
+			return whiteness == 255
 
 		# short side
 		if i==0:
