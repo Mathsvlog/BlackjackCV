@@ -12,6 +12,7 @@ class CardGroup:
 		self.isValid = len(cards)>1
 		self._computeScore()
 		self.move = "I"
+		self.isBlackjack = self.scoreKey=="21S"
 
 	def __repr__(self):
 		g = "D" if self.isDealer else "P"
@@ -39,8 +40,11 @@ class CardGroup:
 		self.isBlackjack = self.score==21
 		# key used to lookup basic strategy dictionary
 		self.scoreKey = str(self.score)
+		# Don't consider doubles for now
+		"""
 		if self.isDouble:
 			self.scoreKey += "D"
+		"""
 		if self.isSoft:
 			self.scoreKey += "S"
 

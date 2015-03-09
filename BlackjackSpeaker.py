@@ -4,9 +4,10 @@ from threading import Thread
 
 class BlackjackSpeaker:
 
-	repeatsRequired = 5
+	repeatsRequired = 3
 	missesRequired = 5
-	phrases = {"H": "Hit me.", "S":"Stand.", "P":"Split the cards.", "D":"Double down.", "B":"I bust."}
+	#phrases = {"H": "Hit me.", "S":"Stand.", "P":"Split the cards.", "D":"Double down.", "B":"I bust."}
+	phrases = {"H": "Hit me.", "S":"Stand.", "P":"Split the cards.", "D":"Hit me.", "B":"I bust."}
 	verbose = True
 
 	def __init__(self):
@@ -21,34 +22,43 @@ class BlackjackSpeaker:
 		self.misses = 0# if hits missresRequired, will set lastState to current state
 		self.thread = None# the separate thread handling speaking
 		self.isWaiting = False
+		self.phraseRemaining = []
+		self.lastPhrase = ""
 
 	def analyzeState(self, state):
 		# When player is waiting on dealer
 		if self.isWaiting:
 			isNextState, dealerGroup = self.lastState.isNextState(state)
-			#print "NEXT_STATE", isNextState
 			if isNextState:
 				self.repeats += 1
 				self.misses = 0
-				if self.repeats >= BlackjackSpeaker.repeatsRequired:
+				if self.repeats == BlackjackSpeaker.repeatsRequired:
 					dScore = dealerGroup.score
 					pScore = self.lastState.players[0].score
 					if dScore < 17:
 						if BlackjackSpeaker.verbose:
-							self.say("Dealer currently has "+str(dScore)+". ")
+							self.say("Dealer currently has "+str(dScore)+". ", checkLast=True)
 					else:
 						phrase = ""
 						if dScore > 21:
 							if BlackjackSpeaker.verbose:
 								phrase += "Dealer busts with "+str(dScore)+". "
-							phraw += "I win."
+							phrase += "I win."
 						else:
 							if BlackjackSpeaker.verbose:
 								phrase += "Dealer stands with "+str(dScore)+". "
 							if dScore > pScore:
 								phrase += "I lose."
 							elif dScore == pScore:
-								phrase += "We tie."
+								if dScore == 21:
+									if dealerGroup.isBlackjack == self.lastState.players[0].isBlackjack:
+										phrase += "We tie."
+									elif dealerGroup.isBlackjack:
+										phrase += "I lose against blackjack."
+									else:
+										phrase += "I win with blackjack."
+								else:
+									phrase += "We tie."
 							else:
 								phrase += "I win."
 						self.say(phrase)
@@ -57,18 +67,25 @@ class BlackjackSpeaker:
 					self.repeats = 0
 			elif state == self.lastState:
 				self.repeats = 0
+				self.misses = 0
 			else:
-				#self.misses += 1
-				self.repeats = 0
-				if self.misses >= BlackjackSpeaker.missesRequired:
+				if not state.isValid:
+					self.misses += 1
+				else:
+					self.misses = 0
+				if self.misses == BlackjackSpeaker.missesRequired*2:
+					self.repeats = 0
+					self.say("New round.")
+					self.lastState = None
 					self.isWaiting = False
+					self.misses = 0
 
 		# When player is trying to make a move
 		else:
 			if state == self.lastState:
 				self.repeats += 1
 				self.misses = 0
-				if self.repeats >= BlackjackSpeaker.repeatsRequired and state.groups!=None:
+				if self.repeats == BlackjackSpeaker.repeatsRequired and state.groups!=None:
 					# figure out move
 					player = filter(lambda group:not group.isDealer, state.groups)[0]
 					if player.move in BlackjackSpeaker.phrases:
@@ -76,28 +93,41 @@ class BlackjackSpeaker:
 						if BlackjackSpeaker.verbose:
 							phrase += self._verbosePhrase(state)
 						phrase += BlackjackSpeaker.phrases[player.move]
-						if not self.say(phrase):
-							self.repeats -= 1
+						#if not self.say(phrase):
+						#	self.repeats -= 1
+						self.say(phrase)
+
 						# Wait on dealer if standing
 						if player.move == "S":
 							self.isWaiting = True
 							self.misses = 0
+							self.repeats = 0
 						self.lastState = state
 
 			else:
 				self.misses += 1
-				if self.misses >= BlackjackSpeaker.missesRequired:
+				if self.misses == BlackjackSpeaker.missesRequired:
 					self.lastState = state
 					self.repeats = 0
 					self.misses = 0
 
-	def say(self, phrase):
-		self.engine.say(phrase)
+		self.attemptPhrase()
+
+	def say(self, phrase, checkLast=False):
+		if phrase not in self.phraseRemaining and (not checkLast or phrase != self.lastPhrase):
+			self.phraseRemaining.append(phrase)
+
+	def attemptPhrase(self):
+		if len(self.phraseRemaining) == 0:
+			return
+		self.engine.say(self.phraseRemaining[0])
 		if self.thread == None or not self.thread.isAlive():
 			self.thread = Thread(target=self.engine.runAndWait)
 			self.thread.start()
-			return True
-		return False
+			self.lastPhrase = self.phraseRemaining[0]
+			self.phraseRemaining = self.phraseRemaining[1:]
+			#return True
+		#return False
 
 	def _verbosePhrase(self, state):
 		phrase = ""

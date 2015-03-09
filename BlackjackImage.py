@@ -243,7 +243,8 @@ class BlackjackImage:
 		bestDist = BlackjackImage._projectedCardSize[2]
 		candidates = []
 		candidateGroup = []
-		lerpAmount = 0.03# lerp shift amount
+		lerpAmount = 0.04# lerp shift amount
+		lerpAmount2 = -lerpAmount*1.5
 		# for each contour, find diagonal opposites and determine if they are cards
 		for aIdx,a in map(lambda idx:(idx,contourApprox[idx]), goodContourIndices):
 			visited = []
@@ -268,11 +269,8 @@ class BlackjackImage:
 							p2in = pf.lerp(p2,p1, lerpAmount)
 							match, candidate, (idx3,idx4) = self._cornerMatch(p1in, p2in, 2)
 							if match:
-								c1,c2,c3,c4 = candidate
-								c1,c3 = pf.lerp(c1,c3, -lerpAmount), pf.lerp(c3,c1, -lerpAmount)
-								c2,c4 = pf.lerp(c2,c4, -lerpAmount), pf.lerp(c4,c2, -lerpAmount)
-
-								candidates.append([c1,c2,c3,c4])
+								center = pf.avg(candidate)
+								candidates.append(map(lambda c:pf.lerp(c,center,lerpAmount2), candidate))
 								candidateGroup.append(aIdx)
 								visited.append(j)
 								visited.append(i)
