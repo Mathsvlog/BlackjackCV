@@ -32,7 +32,7 @@ class BlackjackCard:
 				cv2.imshow("p1"+str(i), p)
 			# trip dark pixels in corner
 			numCornerTrims = 0
-			while np.max(p[0,0])!=255 and numCornerTrims<3:
+			while np.max(p[0,0])!=255 and numCornerTrims<5:
 				p = p[1:,1:]
 				numCornerTrims += 1
 			# trim outer edges
