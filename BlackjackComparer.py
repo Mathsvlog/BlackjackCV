@@ -97,18 +97,20 @@ class BlackjackComparer:
 		vals = sorted(vals.items(), key=lambda v:v[1])
 		return zip(*vals[:numCards])
 
-	def _test(self):
+	def _test(self, blurAmount=0, wait=False):
 		print "START"
 		t = time()
+		badValues = 0
+		badSuits = 0
 		for s in "DCHS":
 			for v in "A23456789TJQK":
 				name = v+s+".jpg"
 				c = cv2.imread("train/original/"+name)
 				c = cv2.resize(c, cardSize)
-				c = cv2.blur(c, (5,5))
+				if blurAmount > 0:
+					c = cv2.blur(c, (blurAmount,blurAmount))
 				card = BlackjackCard(c, (0,0))
 				cv2.imshow("", card.getCard())
-				cv2.waitKey(0)
 
 				#match, val = self.getClosestCard(c)
 				matches, values = self.getClosestCards(card, 15)
@@ -117,8 +119,16 @@ class BlackjackComparer:
 						print v+s, matches.index(v+s), matches
 					else:
 						print v+s, matches
+					if matches[0][0] != v:
+						badValues += 1
+					if matches[0][1] != s:
+						badSuits += 1
+					if wait:
+						cv2.waitKey(0)
+		print "BAD SUITS: ",badSuits
+		print "BAD VALUES: ",badValues
 		print "END", time()-t
 
 
 #b = BlackjackComparer()
-#b._test()
+#b._test(0)
