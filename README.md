@@ -17,4 +17,4 @@ Hit ESCAPE to exit the program.
 
 If a webcam is not accessible, the program will instead go through a series of images, running the card detection and identification process on each image. The first image contains a single card and is used to calibrate the perspective transformation. Hit ESCAPE to exit the program. Hit any other key to go to the next image.
 
-If a webcam is accessible, but you want to cycle through the images instead, change MAIN.py to set ignoreWebcam=False before running.
+If a webcam is accessible, but you want to cycle through the images instead, change supply argment -ignorewebcam when running MAIN.py
