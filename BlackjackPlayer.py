@@ -22,7 +22,7 @@ class BlackjackPlayer:
 	"""
 	def __init__(self, doRun=True, ignoreWebcam=False):
 		self.comparer = BlackjackComparer()
-		# init camera if exists
+		# initialize camera if one exists
 		if ignoreWebcam:
 			self.hasWebcam = False
 		else:
@@ -34,12 +34,10 @@ class BlackjackPlayer:
 			if self.camAttI>=0:
 				self.webcam.set(self.camAtt, self.camAttI)
 			self.hasWebcam, frame = self.webcam.read()
-			#if self.hasWebcam:
-				#print self.webcam.get(self.camAtt)
 		
-		self.project = not self.hasWebcam
-		self.reproject = False
-		self.speaker = BlackjackSpeaker()
+		self.project = not self.hasWebcam# True to apply a projection transformation
+		self.reproject = False# set True to recompute the projection transformation
+		self.speaker = BlackjackSpeaker()# uses speech to declare moves
 
 		if doRun:
 			self.run()
@@ -88,29 +86,8 @@ class BlackjackPlayer:
 			# without webcam, show image until keypress
 			else:
 				key = cv2.waitKey(0) & 0xFF
-				if key == 27:
+				if key == 27:# ESCAPE
 					sys.exit()
-			
-
-	"""
-	rect = ((centerX,centerY),(width,height),(angle))
-	return list of box points given rect
-	"""
-	def computeBoxPoints(self, rect):
-		# extract rectangle params
-		x,y=rect[0]
-		w=rect[1][0]/2
-		h=rect[1][1]/2
-		a = rect[2]*pi/180.
-		c,s = cos(a),sin(a)
-		# create list of unrotated points
-		p = (-w,w,-h,h)
-		off = [(p[0],p[2]),(p[1],p[2]),(p[1],p[3]),(p[0],p[3])]
-		# rotate points
-		pts = map(lambda p:(
-			int(round(x+p[0]*c-p[1]*s)), 
-			int(round(y+p[0]*s+p[1]*c))), off)
-		return np.array([pts])
 
 
 	"""
@@ -173,7 +150,6 @@ class BlackjackPlayer:
 	def analyzeImageForCards(self, image):
 		candidates, cardGroups = image.extractCardCandidates()
 		cards = self.getTransformedCardCandidates(image, candidates)
-		#cards = self.filterCards(cards)
 		for c in cards:
 			# optional card sharpening, only affects output appearance
 			if BlackjackPlayer.sharpenCardOutput:
@@ -186,7 +162,7 @@ class BlackjackPlayer:
 			names, values = self.comparer.getClosestCards(c, 5)
 			name, value = names[0], values[0]
 			certainty = str(int(log(value, .15)))
-			c.setCardName(name)#+"_"+certainty)
+			c.setCardName(name)
 
 			if BlackjackPlayer.printCards:
 				print name, value, names, c.center
@@ -195,17 +171,6 @@ class BlackjackPlayer:
 		self.currState = BlackjackState(cards, cardGroups)
 		if self.hasWebcam:
 			self.speaker.analyzeState(self.currState)
-
-	"""
-	UNFINISHED
-	Filters out card candidates that are determined to not be cards
-	"""
-	def filterCards(self, cards):
-		for idx,card in reversed(list(enumerate(cards))):
-			#print np.shape(card), self.bigBox, np.average(card, axis=(1))
-			#print card.getEdgeWhiteness()
-			pass
-		return cards
 
 	"""
 	Takes in a list of card candidates and transforms them to be
@@ -245,7 +210,7 @@ class BlackjackPlayer:
 		self.showImage(cardDisplay, "BlackjackCV - Out", 110*c, True)
 
 	"""
-	Image capture mode that is only used for saving images
+	Alternate running mode that is only used for saving images
 	"""
 	def runCapture(self):
 		idx = 1
@@ -289,14 +254,8 @@ class BlackjackPlayer:
 		if self.hasWebcam:
 			while True:
 				_, frame =self.webcam.read()
-				#blur = cv2.blur(frame, blurPixels)
-				#frame2 = cv2.addWeighted(frame, 1.5, blur, -0.5, 0)
-				#frame2 = cv2.addWeighted(frame, 1+amount, blur, -amount, 0)
-				#analyzeImageForCards2(frame2)
 				image = BlackjackImage(frame, project=self.project, recomputeProjection=self.reproject)
 				self.reproject = False
 				self.analyzeImageForCards(image)
-				#image = cv2.Canny(image.getInputImage(), 100, 200)
 				self.showImage(image)
 
-b = BlackjackPlayer()

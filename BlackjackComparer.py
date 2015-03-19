@@ -48,11 +48,6 @@ class BlackjackComparer:
 					trimmed = trimmed[idx1:idx2,:]
 		return trimmed
 
-
-	def _getCard(self, filename):
-		im = cv2.imread(filename)
-		return im
-
 	"""
 	Thresholds an image
 	"""
@@ -97,6 +92,10 @@ class BlackjackComparer:
 		vals = sorted(vals.items(), key=lambda v:v[1])
 		return zip(*vals[:numCards])
 
+	"""
+	Attempts to identify the suit/value of the 52 images from a testing dataset.
+	The images can be blured by blurAmount before identifying.
+	"""
 	def _test(self, blurAmount=0, wait=False):
 		print "START"
 		t = time()
@@ -128,7 +127,3 @@ class BlackjackComparer:
 		print "BAD SUITS: ",badSuits
 		print "BAD VALUES: ",badValues
 		print "END", time()-t
-
-
-#b = BlackjackComparer()
-#b._test(0)

@@ -1,76 +1,14 @@
 from BlackjackGlobals import *
 import PointFunctions as pf
 
-class CardGroup:
-
-	def __init__(self, cards):
-		self.cards = cards
-		self.cardStrings = map(lambda c:c.name, cards)
-		self.cardStrings.sort()
-		self.center = tuple(pf.avg(map(lambda c:c.center, cards)))
-		self.isDealer = False
-		self.isValid = len(cards)>1
-		self._computeScore()
-		self.move = "I"
-		self.isBlackjack = self.scoreKey=="21S"
-
-	def __repr__(self):
-		g = "D" if self.isDealer else "P"
-		g += "("+",".join(self.values)+")"
-		g += "="+self.scoreKey
-		if not self.isDealer:
-			g += ":"+self.move
-		return g
-
-	def __eq__(self, other):
-		#return set(self.cards) == set(other.cards) and self.isDealer==other.isDealer 
-		return self.cardStrings == other.cardStrings and self.isDealer==other.isDealer 
-
-	def _computeScore(self):
-		values = map(lambda c:c.name[0], self.cards)
-		score = sum(map(lambda v:cardValueMap[v], values))
-		# make As soft when over 21
-		self.isDouble = len(values)==2 and values[0]==values[1]
-		if score>21 and "A" in values:
-			values[values.index("A")] = "Ahard"
-			score -= 10
-		self.isSoft = "A" in values
-		self.values, self.score = values, score
-		self.isBust = self.score>=21
-		self.isBlackjack = self.score==21
-		# key used to lookup basic strategy dictionary
-		self.scoreKey = str(self.score)
-		# Don't consider doubles for now
-		"""
-		if self.isDouble:
-			self.scoreKey += "D"
-		"""
-		if self.isSoft:
-			self.scoreKey += "S"
-
-	def setDealer(self):
-		self.isDealer = True
-		self.isValid = True
-		if len(self.values)==1:
-			self.scoreKey = str(cardValueMap[self.values[0]])
-
-	def computeMove(self, dealer):
-		if len(dealer.cards)>1:
-			self.move = "W"# wait
-		elif self.score>21:
-			self.move = "B"# bust
-		else:
-			key = (self.scoreKey, dealer.scoreKey)
-			if key in basicStrategy:
-				self.move = basicStrategy[key]
-			else:
-				self.move = "I"# invalid, should not happen
-
 class BlackjackState:
 	
 	minGroupDist = max(imageX,imageY)/4
 
-
+	"""
+	Class that determines the state of a game of blackjack given the
+	list of cards and card group assignments
+	"""
 	def __init__(self, cards, cardGroups):
 		self.dealerPos = None
 		self.isValid = self._isStateValid(cards, cardGroups)
@@ -86,10 +24,16 @@ class BlackjackState:
 			return False
 		return str(self.groups)==str(other.groups)
 
+	"""
+	Filters card groups that are the dealer and are not the dealer
+	"""
 	def _computeDealersAndPlayers(self):
 		self.dealers = filter(lambda g:g.isDealer, self.groups)
 		self.players = filter(lambda g:not g.isDealer, self.groups)
 
+	"""
+	A state is invalid under the conditions stated in the comments below
+	"""
 	def _isStateValid(self, cards, cardGroups):
 		self.groups = None
 
@@ -109,6 +53,7 @@ class BlackjackState:
 		if not all(map(lambda g:g.isValid, groups)):
 			return False
 
+		# If any player produces an invalid move
 		if hasDealer:
 			for group in groups:
 				if not group.isDealer:
@@ -116,6 +61,7 @@ class BlackjackState:
 						print "FOUND INVALID STATE", self.group, self.dealer
 						return False
 
+		# State is valid
 		self.groups = groups
 		return True
 
@@ -149,13 +95,13 @@ class BlackjackState:
 		self.dealerPos = self.dealer.center
 		return True
 
+	"""
+	Sets the group index of the dealer
+	"""
 	def setDealer(self, group):
 		if group in self.groups:
 			self.groups[self.groups.index(group)].isDealer = True
 			self._computeDealersAndPlayers()
-			print "SDJFKLSDJ", self.dealers
-			if len(self.dealers) == 0:
-				print "WHAT THE ACTUAL FUCKING FUCK"
 
 	"""
 	Determines if the given next state is a valid future state
@@ -191,5 +137,84 @@ class BlackjackState:
 				if dealerMatches:
 					dealerGroup = g
 
-
 		return (playerMatches and dealerMatches, dealerGroup)
+
+class CardGroup:
+	"""
+	Class which analyzes a list of cards and extracts useful information,
+	such as the score and the blackjack basic strategy move
+	"""
+	def __init__(self, cards):
+		self.cards = cards
+		self.cardStrings = map(lambda c:c.name, cards)
+		self.cardStrings.sort()
+		self.center = tuple(pf.avg(map(lambda c:c.center, cards)))
+		self.isDealer = False
+		self.isValid = len(cards)>1
+		self._computeScore()
+		self.move = "I"
+		self.isBlackjack = self.scoreKey=="21S" and len(self.cards)==2
+
+	def __repr__(self):
+		g = "D" if self.isDealer else "P"
+		g += "("+",".join(self.values)+")"
+		g += "="+self.scoreKey
+		if not self.isDealer:
+			g += ":"+self.move
+		return g
+
+	def __eq__(self, other):
+		#return set(self.cards) == set(other.cards) and self.isDealer==other.isDealer 
+		return self.cardStrings == other.cardStrings and self.isDealer==other.isDealer 
+
+	"""
+	Computes a numerical and a string score for the hand
+	"""
+	def _computeScore(self):
+		values = map(lambda c:c.name[0], self.cards)
+		score = sum(map(lambda v:cardValueMap[v], values))
+		# make As soft when over 21
+		self.isDouble = len(values)==2 and values[0]==values[1]
+		if score>21 and "A" in values:
+			values[values.index("A")] = "Ahard"
+			score -= 10
+		self.isSoft = "A" in values
+		self.values, self.score = values, score
+		self.isBust = self.score>=21
+		self.isBlackjack = self.score==21
+		# key used to lookup basic strategy dictionary
+		self.scoreKey = str(self.score)
+		"""
+		Don't consider doubles for now
+		Double Down and Split are not yet implemented in BlackjackSpeaker
+		"""
+		"""
+		if self.isDouble:
+			self.scoreKey += "D"
+		"""
+		if self.isSoft:
+			self.scoreKey += "S"
+
+	"""
+	Marks this group as a dealer
+	"""
+	def setDealer(self):
+		self.isDealer = True
+		self.isValid = True
+		if len(self.values)==1:
+			self.scoreKey = str(cardValueMap[self.values[0]])
+
+	"""
+	Computes move based on basic strategy, given the dealer's hand
+	"""
+	def computeMove(self, dealer):
+		if len(dealer.cards)>1:
+			self.move = "W"# wait
+		elif self.score>21:
+			self.move = "B"# bust
+		else:
+			key = (self.scoreKey, dealer.scoreKey)
+			if key in basicStrategy:
+				self.move = basicStrategy[key]
+			else:
+				self.move = "I"# invalid state

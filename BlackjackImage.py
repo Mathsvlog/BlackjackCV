@@ -9,7 +9,6 @@ class BlackjackImage:
 	_projectionTransform = None
 	_projectedCardSize = None
 	_cardSizeTolerance = 15
-	# tolerance of at least 6
 
 	"""
 	Class for an input image to analyze for playing cards
@@ -93,30 +92,33 @@ class BlackjackImage:
 		p = M*corners[0]
 		angle = -atan2(p[1,0],p[0,0])
 		M = np.matrix([[cos(angle), -sin(angle),0],[sin(angle), cos(angle),0],[0,0,1]])*M
-		# fix rotation to the z axis
-		#M[1,0] = 0
-		#M[2,0] = 0
 		# scale to fix corners
 		scale = float("inf")
 		for i,j in [[0,1],[1,0]]:
 			p = M*corners[i]
 			scale = min(scale, size[j]*p[2,0]/p[i,0])
 		M = np.matrix([[scale,0,0],[0,scale, 0],[0,0,1]])*M
-		#print "\n".join(map(lambda m:str(m),M.tolist()))
 		# set final matrix
 		BlackjackImage._projectionTransform = M
-		# compute card lengths in projected image
+		# compute card edge and diagonal lengths in projected image
 		pts = map(lambda c:zip(*(c/c[2]).tolist()[:2]), map(lambda c:M*np.matrix([[c[0]],[c[1]],[1]]), card))
 		cardLengths = map(lambda i:pf.dist(pts[0][0],pts[i][0]), range(1,4))
 		cardLengths.sort()
 		BlackjackImage._projectedCardSize = tuple(map(lambda l:int(round(l)), cardLengths))
 
+	"""
+	Performs a perspective transformation on the input image
+	"""
 	def _applyProjectionTransform(self):
 		# project original image
-		rotated = cv2.warpPerspective(self.image, BlackjackImage._projectionTransform, (640,480))
+		rotated = cv2.warpPerspective(self.image, BlackjackImage._projectionTransform, (imageX,imageY))
 		self.image = np.copy(rotated)
 		self._createImageVariants()
 	
+	"""
+	Create a darkened version of the image, a grayscale version of the image,
+	and a copy of the image that will serve as the visual output
+	"""
 	def _createImageVariants(self):
 		if self.drawOut:
 			self.imageOut = np.copy(self.image)
@@ -144,8 +146,6 @@ class BlackjackImage:
 	Returns a list of centroids of corners using Harris corner algorithm
 	"""
 	def extractHarisCorners(self):
-		#imValues = cv2.cornerHarris(self.imageGrey, 5, 3, 0.04)
-		#imValues = cv2.cornerHarris(self.imageGrey, 5, 9, 0.04)
 		if self.isProjected:
 			cv2.imshow("grey", self.imageGrey)
 			cv2.moveWindow("grey", 930,360)
@@ -201,44 +201,65 @@ class BlackjackImage:
 		contourApprox = map(lambda c:self.approx(c), contours)
 		self.drawContours(contours, (255,255,0))
 
-		# whiten contours before finding harris corners
+		# If image is perspective transformed, occluded cards can be found
 		if self.isProjected:
+			# whiten contours before finding card candidates
 			for _ in range(2):
 				for c in contours:
 					cv2.drawContours(self.imageGrey, [c], 0, (255,255,255), -1)
 					cv2.drawContours(self.imageDark, [c], 0, (255,255,255), -1)
 				contours = self.extractCannyContours()
 				contourApprox = map(lambda c:self.approx(c), contours)
-
-
-		# find corners
-		corners = self.extractHarisCorners()
-		cornerList = map(lambda c:tuple(c),list(corners))
-		#self.drawCorners(corners)
-		if self.isProjected:
-			cardCandidates, cardGroups = self._extractCardCandidatesHelper3(contours, contourApprox, cornerList)
+			cardCandidates, cardGroups = self._extractCardCandidatesHelperProjected(contours, contourApprox)#get card candidates
 			for c in cardCandidates:
-				#self.drawCorners(c, (255,0,0))
-				#self.drawContours(c, (255,0,0))
-
 				rect = np.matrix(map(lambda c:(int(round(c[0])),int(round(c[1]))), c))
 				cv2.drawContours(self.imageOut, [rect],0,(255,0,0),1)
+		# only unoccluded cards can be found
 		else:
-			cardCandidates = self._extractCardCandidatesHelper1(contours, contourApprox, cornerList)
+			corners = self.extractHarisCorners()
+			cornerList = map(lambda c:tuple(c),list(corners))
+			cardCandidates = self._extractCardCandidatesHelperUnprojected(contours, contourApprox, cornerList)#get card candidates
 			cardGroups = [0 for i in range(len(cardCandidates))]
-		
-		if self.isProjected:
-			for pts in cardCandidates:
-				cardLengths = map(lambda i:pf.dist(pts[0],pts[i]), range(1,4))
-				cardLengths.sort()
-				errors = map(lambda i:abs(cardLengths[i]-BlackjackImage._projectedCardSize[i]), range(3))
-				#print max(errors)
+
 		return cardCandidates, cardGroups
 
-	def _extractCardCandidatesHelper3(self, contours, contourApprox, cornerList):
-		size = self._projectedCardSize[0]*self._projectedCardSize[1]
+
+	"""
+	Computes card candidates for an image that is perspective transformed
+	"""
+	def _extractCardCandidatesHelperProjected(self, contours, contourApprox):
+		
+		"""
+		Determines if the given rectangle contains only white points
+		"""
+		def isWhite(candidate):
+			rect = np.matrix(map(lambda c:(int(round(c[0])),int(round(c[1]))), candidate))
+			mask = np.zeros((imageY,imageX), np.uint8)
+			cv2.drawContours(mask, [rect],0,255,-1)
+			pts = np.nonzero(mask)
+			whiteness = np.mean(self.imageGrey[pts])
+			return whiteness == 255
+
+		"""
+		Given two opposite corner points, computes two pair of points that could be the other corners.
+		If either resulting rectangle only contains white points, it is returned as a card candidate
+		"""
+		def _cornerMatch(c1, c2):
+			for a,l in ((atan(2.5/3.5), 3.5/(2.5**2+3.5**2)**.5),(atan(3.5/2.5), 2.5/(2.5**2+3.5**2)**.5)):
+				c,s = cos(a),sin(a)
+				p = pf.vec(c1,c2)
+				c3 = pf.lerp(c1,pf.add(c1,(c*p[0]-s*p[1],s*p[0]+c*p[1])),l)
+				p = pf.vec(c2,c1)
+				c4 = pf.lerp(c2, pf.add(c2,(c*p[0]-s*p[1],s*p[0]+c*p[1])), l)
+				if pf.dist(c1,c3) > pf.dist(c1,c4):
+					c3,c4 = c4,c3
+				candidate = [c1,c3,c2,c4]
+				if isWhite(candidate):
+					return True, candidate, (1,3)
+			return False, None, (-1,-1)
 
 		# filter contours that are large enough to contain at least one card
+		size = self._projectedCardSize[0]*self._projectedCardSize[1]
 		goodContourIndices = filter(lambda i:cv2.contourArea(contours[i]) > size and len(contourApprox[i])>3, range(len(contours)))
 		bestDist = BlackjackImage._projectedCardSize[2]
 		candidates = []
@@ -264,10 +285,11 @@ class BlackjackImage:
 						p1 = tuple(a[i][0])
 						p2 = tuple(a[j][0])
 						dist = pf.dist(p1,p2)
+						# if so, bring the corners slightly closer and find the other two corners
 						if abs(dist-bestDist) < BlackjackImage._cardSizeTolerance:
 							p1in = pf.lerp(p1,p2, lerpAmount)
 							p2in = pf.lerp(p2,p1, lerpAmount)
-							match, candidate, (idx3,idx4) = self._cornerMatch(p1in, p2in, 2)
+							match, candidate, (idx3,idx4) = _cornerMatch(p1in, p2in)
 							if match:
 								center = pf.avg(candidate)
 								candidates.append(map(lambda c:pf.lerp(c,center,lerpAmount2), candidate))
@@ -275,121 +297,24 @@ class BlackjackImage:
 								visited.append(j)
 								visited.append(i)
 
-								# don't consider points that are the third or fourth corner
+								# don't consider polygon points that are the third or fourth corner of this card
 								for k in filter(lambda idx:idx not in visited, range(len(a))):
 									p3 = tuple(a[k][0])
 									dist1 = pf.dist(candidate[idx3],p3)
 									dist2 = pf.dist(candidate[idx4],p3)
 									if dist1 < BlackjackImage._cardSizeTolerance or dist2 < BlackjackImage._cardSizeTolerance:
 										visited.append(k)
-						
 								break
 
 		return candidates, candidateGroup
 
-	def _extractCardCandidatesHelper2(self, contours, contourApprox, cornerList):
-		corners = cornerList[:][:]
-		candidates = []
-		# match first corner in list until list is depleted
-		while len(corners) > 1:
-			c1 = corners[0]
-			#cv2.circle(self.imageOut, tuple(map(lambda i:int(i),c1)), 10, (255,255,0), -1)
-			# compute distances from all other corners to first corner
-			dists = map(lambda i:pf.dist(c1, corners[i]), range(1,len(corners)))
-			# find which corner are the proper distances to be part of the same card
-			neighbors = {i:[] for i in [0,1,2]}
-			for d in range(len(dists)):
-				for i in range(3):
-					if abs(dists[d] - BlackjackImage._projectedCardSize[i]) < BlackjackImage._cardSizeTolerance:
-						neighbors[i].append(corners[d+1])
-						#color = [0,0,0]; color[i]=255
-						#cv2.circle(self.imageOut, tuple(map(lambda i:int(i),corners[d+1])), 5, color, -1)#
-			foundCard = False
-			for i in [2,1,0]:
-				for c2 in neighbors[i]:
-					match, candidate, (i,j) = self._cornerMatch(c1, c2, i)
-					if match:
-						c3,c4 = candidate[i], candidate[j]
-						for c in corners[1:]:
-							if pf.dist(c3,c) < BlackjackImage._cardSizeTolerance:
-								candidate[i] = c3
-								corners.remove(c)
-								break
-						for c in corners[1:]:
-							if pf.dist(c4,c) < BlackjackImage._cardSizeTolerance:
-								candidate[j] = c4
-								corners.remove(c)
-								break
-						corners.remove(c1)
-						corners.remove(c2)
-						candidates.append(candidate)
-						foundCard = True
-						break
-				if foundCard:
-					#print candidates[-1]
-					#print len(corners)
-					break
-			if not foundCard:
-				corners = corners[1:]
+	
 
-		candidates = map(lambda cand:map(lambda c:(int(round(c[0])),int(round(c[1]))), cand), candidates)
-		return candidates
-
-	def _cornerMatch(self, c1, c2, i):
-		def isWhite(candidate):
-			rect = np.matrix(map(lambda c:(int(round(c[0])),int(round(c[1]))), candidate))
-			mask = np.zeros((imageY,imageX), np.uint8)
-			cv2.drawContours(mask, [rect],0,255,-1)
-			pts = np.nonzero(mask)
-			whiteness = np.mean(self.imageGrey[pts])
-
-			ptsWhite = True
-			#print "C:",
-			for x,y in rect.tolist():
-				#print self.imageGrey[y,x],
-				if self.imageGrey[y,x]!=255:
-					ptsWhite = False
-			#print whiteness
-			if not ptsWhite:
-				return False
-
-			return whiteness == 255
-
-		# short side
-		if i==0:
-			l = 1.4
-			for a,b in [(c1,c2),(c2,c1)]:
-				c3 = pf.lerp(c2,pf.add(c2,pf.norm(a,b)),l)
-				c4 = pf.lerp(c1,pf.add(c1,pf.norm(a,b)),l)
-				candidate = [c1,c2,c3,c4]
-				if isWhite(candidate):
-					return True, candidate, (2,3)
-		# long side
-		elif i==1:
-			l = 1.4
-			for a,b in [(c1,c2),(c2,c1)]:
-				c3 = pf.lerp(c2,pf.add(c2,pf.norm(a,b)),l)
-				c4 = pf.lerp(c1,pf.add(c1,pf.norm(a,b)),l)
-				candidate = [c1,c2,c3,c4]
-				if isWhite(candidate):
-					return True, candidate, (2,3)
-		# diagonal
-		elif i==2:
-			for a,l in ((atan(2.5/3.5), 3.5/(2.5**2+3.5**2)**.5),(atan(3.5/2.5), 2.5/(2.5**2+3.5**2)**.5)):
-				c,s = cos(a),sin(a)
-				p = pf.vec(c1,c2)
-				c3 = pf.lerp(c1,pf.add(c1,(c*p[0]-s*p[1],s*p[0]+c*p[1])),l)
-				p = pf.vec(c2,c1)
-				c4 = pf.lerp(c2, pf.add(c2,(c*p[0]-s*p[1],s*p[0]+c*p[1])), l)
-				if pf.dist(c1,c3) > pf.dist(c1,c4):
-					c3,c4 = c4,c3
-				candidate = [c1,c3,c2,c4]
-				if isWhite(candidate):
-					return True, candidate, (1,3)
-
-		return False, None, (-1,-1)
-
-	def _extractCardCandidatesHelper1(self, contours, contourApprox, cornerList):
+	"""
+	Computes card candidates for an image that is NOT perspective transformed.
+	Only finds unoccluded cards
+	"""
+	def _extractCardCandidatesHelperUnprojected(self, contours, contourApprox, cornerList):
 		condition = lambda i:len(contourApprox[i])==4 and 800<cv2.contourArea(contours[i])
 		cardCandidates = []
 		for idx in filter(condition, range(len(contours))):
@@ -398,7 +323,7 @@ class BlackjackImage:
 			
 			isCard = True
 			prevCornerList = cornerList[:]
-			# contour is card if matchs 4 corners
+			# contour is a card if matches 4 harris corners
 			for i in xrange(4):
 				point = points[i]
 				closestDist = float("inf")

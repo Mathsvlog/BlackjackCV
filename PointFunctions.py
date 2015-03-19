@@ -1,6 +1,7 @@
 from math import acos, atan2
 
-# List of lambda functions that take in 2 points
+# Series of lambda functions that take in 2, 3, or a list of points
+
 # ab distance
 dist = lambda a,b:((a[0]-b[0])**2+(a[1]-b[1])**2)**.5
 # ab dot product
@@ -21,6 +22,7 @@ lerp = lambda a,b,t:[a[0]*(1-t)+b[0]*t, a[1]*(1-t)+b[1]*t]
 rounded = lambda p:map(lambda i:int(round(i)), p)
 # sum of ab
 add = lambda a,b:[a[0]+b[0],a[1]+b[1]]
-
+# average point of a list of points
 avg = lambda pts: map(lambda x:sum(x)/len(pts),zip(*pts))
+# center of the bounding box of a list of points
 center = lambda pts: map(lambda x:min(x)+(max(x)-min(x))/2,zip(*pts))

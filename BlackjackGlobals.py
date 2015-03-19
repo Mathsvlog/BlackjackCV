@@ -1,3 +1,5 @@
+# Variables used throughout the program
+
 # card and pip dimensions
 _cardScale = 1
 cardSize = (int(250*_cardScale),int(350*_cardScale))
@@ -9,8 +11,10 @@ imageX,imageY = 640, 480# standard image size
 # pip sharpen amount
 pipSharpen = 2
 
+# subimage size for the suit or value of a pip
 pipPartSize = (100,100)
 
+# params for font drawn on output image
 fontSize = _cardScale
 fontThick = max(1,int(_cardScale*2))
 
