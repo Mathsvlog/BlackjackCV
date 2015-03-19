@@ -20,7 +20,7 @@ class BlackjackImage:
 		# 1D numpy array to tuple
 		self.toPoints = lambda points:map(lambda p:tuple(p[0]), points)
 		# centroid approximation
-		epsilon = lambda c:0.01*cv2.arcLength(c, True)
+		epsilon = lambda c:0.008*cv2.arcLength(c, True)
 		self.approx = lambda c:cv2.approxPolyDP(c, epsilon(c), True)
 		self.drawOut = drawImageOut
 		self._createImageVariants()
