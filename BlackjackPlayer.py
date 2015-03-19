@@ -238,17 +238,14 @@ class BlackjackPlayer:
 		amount = 0
 		# without webcam, run computations on specific images
 		if not self.hasWebcam:
-			#for filename in map(lambda i:"images/"+str(i)+".jpg", ["cards-640"]+range(1,16)):
-			#for filename in map(lambda i:"train/"+i+".jpg", "CSHD"):
-			#for filename in map(lambda i:"images/"+str(i)+".jpg", [31] + range(23,31)):
-			for filename in map(lambda i:"images/"+str(i)+".jpg", [32]):
+			for filename in map(lambda i:"images/"+str(i)+".jpg", range(1,9)):
 				im = cv2.imread(filename)
 				blur = cv2.blur(im, blurPixels)
 				frame2 = cv2.addWeighted(im, 1+amount, blur, -amount, 0)
 				image = BlackjackImage(frame2, project=self.project, recomputeProjection=False)
+				print filename
 				self.analyzeImageForCards(image)
 				self.showImage(image)
-				print filename
 
 		# with webcam, run computations on webcam images
 		if self.hasWebcam:

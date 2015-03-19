@@ -32,7 +32,7 @@ class BlackjackCard:
 				cv2.imshow("p1"+str(i), p)
 			# trip dark pixels in corner
 			numCornerTrims = 0
-			while np.max(p[0,0])!=255 and numCornerTrims<5:
+			while np.max(p[0,0])!=255 and numCornerTrims<10:
 				p = p[1:,1:]
 				numCornerTrims += 1
 			# trim outer edges
@@ -66,6 +66,7 @@ class BlackjackCard:
 			suit = cv2.resize(p[idx2:], pipPartSize)
 			
 			th = np.mean(value)
+			th += (255-th)*.4
 			value = cv2.threshold(value, th, 255, cv2.THRESH_BINARY)[1]
 			th = np.mean(suit)
 			suit = cv2.threshold(suit, th, 255, cv2.THRESH_BINARY)[1]

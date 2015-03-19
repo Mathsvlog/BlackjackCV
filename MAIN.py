@@ -1,3 +1,3 @@
 from BlackjackPlayer import BlackjackPlayer
 
-b = BlackjackPlayer()
+b = BlackjackPlayer(ignoreWebcam=False)

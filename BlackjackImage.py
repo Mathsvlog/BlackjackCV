@@ -259,7 +259,7 @@ class BlackjackImage:
 			return False, None, (-1,-1)
 
 		# filter contours that are large enough to contain at least one card
-		size = self._projectedCardSize[0]*self._projectedCardSize[1]
+		size = self._projectedCardSize[0]*self._projectedCardSize[1]*.75
 		goodContourIndices = filter(lambda i:cv2.contourArea(contours[i]) > size and len(contourApprox[i])>3, range(len(contours)))
 		bestDist = BlackjackImage._projectedCardSize[2]
 		candidates = []
